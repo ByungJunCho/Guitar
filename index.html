@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guitar Coach Pro</title>
+    <script src="https://unpkg.com/ml5@0.6.0/dist/ml5.min.js"></script>
+    <style>
+        :root { --primary: #007bff; --hover: #0056b3; --bg: #f4f7f6; --dark: #333; --card-bg: #ffffff; }
+        /* 💡 수정: body가 전체 화면을 차지하도록 변경 */
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg); margin: 0; padding: 0; height: 100vh; overflow-x: hidden; }
+        
+        /* 💡 수정: 모바일 느낌의 박스 스타일 제거 및 전체 화면 적용 */
+        .app-container { width: 100%; height: 100%; position: relative; }
+        
+        /* 💡 추가: 내용물을 중앙에 모아주는 래퍼 (너무 퍼지지 않게 함) */
+        .content-wrapper {
+            width: 100%; max-width: 900px; /* 적절한 최대 너비 설정 */
+            margin: 0 auto; padding: 30px; /* 상하좌우 여백 추가 */
+            height: 100%; box-sizing: border-box;
+            display: flex; flex-direction: column;
+        }
+
+        /* 1. 메인 메뉴 화면 */
+        #main-menu { height: 100%; animation: fadeIn 0.5s; }
+        /* 💡 수정: 메인 메뉴 컨텐츠를 수직 중앙 정렬 */
+        #main-menu .content-wrapper { justify-content: center; align-items: center; gap: 40px; }
+        
+        .logo-area { text-align: center; }
+        .logo-area h1 { margin: 0; color: var(--dark); font-size: 36px; font-weight: 800; }
+        .logo-area p { margin: 10px 0 0; color: #666; font-size: 16px; }
+
+        .circle-grid { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
+        .circle-btn {
+            width: 150px; height: 150px; /* 크기 약간 증가 */
+            background: var(--primary); color: white;
+            border-radius: 50%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: bold;
+            cursor: pointer; box-shadow: 0 8px 20px rgba(0,123,255,0.2); /* 그림자 더 부드럽게 */
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .circle-btn:hover { transform: translateY(-5px) scale(1.05); background: var(--hover); box-shadow: 0 12px 25px rgba(0,123,255,0.3); }
+        .circle-btn span { font-size: 36px; margin-bottom: 8px; }
+
+        /* 2. 기능 상세 화면 (공통) */
+        .feature-screen { 
+            display: none; width: 100%; height: 100%;
+            background: var(--bg); /* 배경색 통일 */
+            animation: slideUp 0.3s;
+        }
+        .header { display: flex; align-items: center; margin-bottom: 30px; }
+        .back-btn { background: none; border: none; font-size: 28px; cursor: pointer; padding: 5px 15px; color: #555; transition: color 0.2s; }
+        .back-btn:hover { color: var(--dark); }
+        .header h2 { margin: 0; flex: 1; font-size: 24px; color: var(--dark); font-weight: 700; }
+
+        /* 기능별 스타일 */
+        /* 💡 수정: 카드 스타일을 좀 더 깔끔하게 변경 */
+        .card { background: var(--card-bg); padding: 30px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .gauge-bar { width: 100%; height: 12px; background: #e9ecef; border-radius: 6px; position: relative; margin-top: 25px; overflow: hidden; }
+        #tuner-pointer { width: 8px; height: 100%; background: #dc3545; position: absolute; left: 50%; transform: translateX(-50%); transition: 0.1s ease-out; border-radius: 4px; }
+        
+        /* 채팅창 */
+        #chat-window { flex: 1; overflow-y: auto; background: var(--card-bg); border-radius: 20px; padding: 25px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 15px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.02); }
+        .message { padding: 12px 18px; border-radius: 18px; font-size: 15px; max-width: 75%; line-height: 1.6; }
+        .user { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+        .coach { align-self: flex-start; background: #f1f3f5; color: #333; border-bottom-left-radius: 4px; }
+
+        /* 버튼 공통 */
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; color: white; transition: background 0.2s; }
+        .btn-dark { background: #343a40; } .btn-dark:hover { background: #23272b; }
+        .btn-primary { background: var(--primary); } .btn-primary:hover { background: var(--hover); }
+        .btn-danger { background: #dc3545; } .btn-danger:hover { background: #c82333; }
+
+        /* 애니메이션 */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <div id="main-menu">
+        <div class="content-wrapper"> <div class="logo-area">
+                <h1>🎸 Guitar Coach Pro</h1>
+                <p>당신을 위한 최고의 기타 트레이닝 파트너</p>
+            </div>
+            <div class="circle-grid">
+                <button class="circle-btn" onclick="openScreen('screen-tuner')">
+                    <span>🎯</span>튜너
+                </button>
+                <button class="circle-btn" onclick="openScreen('screen-player')">
+                    <span>🎵</span>연습
+                </button>
+                <button class="circle-btn" onclick="openScreen('screen-metro')">
+                    <span>⏱️</span>메트로놈
+                </button>
+                <button class="circle-btn" onclick="openScreen('screen-coach')">
+                    <span>🤖</span>AI 코치
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-tuner" class="feature-screen">
+        <div class="content-wrapper"> <div class="header">
+                <button class="back-btn" onclick="goHome()">←</button>
+                <h2>실시간 튜너</h2>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div id="note-display" style="font-size: 70px; font-weight: 800; color: var(--dark); line-height: 1;">-</div>
+                <div id="freq-display" style="color: #888; font-size: 16px; margin-bottom: 30px;">START를 눌러주세요</div>
+                <div class="gauge-bar">
+                    <div id="tuner-pointer"></div>
+                </div>
+            </div>
+            <button id="tuner-btn" class="btn btn-dark" onclick="toggleTuner()">TUNER START</button>
+            <p style="text-align: center; color: #888; font-size: 13px; margin-top: 25px;">
+                브라우저의 마이크 권한을 꼭 허용해주세요!
+            </p>
+        </div>
+    </div>
+
+    <div id="screen-player" class="feature-screen">
+        <div class="content-wrapper"> <div class="header">
+                <button class="back-btn" onclick="goHome()">←</button>
+                <h2>연습 플레이어</h2>
+            </div>
+            <div class="card">
+                <label for="audio-upload" style="display: block; margin-bottom: 10px; font-weight: bold;">음원 파일 선택</label>
+                <input type="file" id="audio-upload" accept="audio/*" style="width:100%; font-size: 14px; margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                <audio id="guitar-audio" controls style="width: 100%; outline: none;"></audio>
+            </div>
+            <div class="card">
+                <label style="font-weight: bold; display: flex; justify-content: space-between;">속도 조절 <span id="speed-val" style="color: var(--primary);">1.0x</span></label>
+                <input type="range" id="speed-slider" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%; margin: 15px 0;">
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button class="btn btn-primary" style="margin:0; flex:1;" onclick="setStart()">시작(A)</button>
+                    <button class="btn btn-primary" style="margin:0; flex:1;" onclick="setEnd()">종료(B)</button>
+                    <button id="loop-btn" class="btn btn-dark" style="margin:0; flex:1.2;" onclick="toggleLoop()">반복 OFF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-metro" class="feature-screen">
+        <div class="content-wrapper" style="justify-content: center;"> <div class="header" style="position: absolute; top: 30px; left: 30px; width: calc(100% - 60px);">
+                <button class="back-btn" onclick="goHome()">←</button>
+                <h2>메트로놈</h2>
+            </div>
+            <div class="card" style="text-align: center; padding: 50px 30px;">
+                <div style="font-size: 60px; font-weight: 800; color: var(--primary); margin-bottom: 30px; line-height: 1;">
+                    <span id="bpm-val">120</span> <span style="font-size:24px; color:#888; font-weight: normal;">BPM</span>
+                </div>
+                <input type="range" id="bpm-slider" min="40" max="240" value="120" style="width:80%; margin: 0 auto 30px;">
+                <button id="metro-btn" class="btn btn-dark" style="width: 80%; margin: 0 auto; font-size: 18px;" onclick="toggleMetronome()">START</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-coach" class="feature-screen">
+        <div class="content-wrapper"> <div class="header">
+                <button class="back-btn" onclick="goHome()">←</button>
+                <h2>AI 마스터 코치</h2>
+            </div>
+            <div id="chat-window">
+                <div class="message coach">안녕하세요! 기타 연습을 도와드릴 AI 코치입니다. 궁금한 주법이나 코드, 연습 방법이 있다면 무엇이든 물어보세요!</div>
+            </div>
+            <div style="display: flex; gap: 10px; padding-top: 15px;">
+                <input type="text" id="user-input" placeholder="질문을 입력하세요..." style="flex:1; padding:14px; border:1px solid #ddd; border-radius:10px; font-size: 15px; outline: none; transition: border 0.2s;">
+                <button class="btn btn-primary" style="width: 80px; margin:0;" onclick="askCoach()">전송</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    /* === 화면 전환 로직 === */
+    function openScreen(screenId) {
+        document.getElementById('main-menu').style.display = 'none';
+        document.querySelectorAll('.feature-screen').forEach(s => s.style.display = 'none');
+        document.getElementById(screenId).style.display = 'block'; // flex -> block으로 변경 후 내부 wrapper가 flex 담당
+    }
+
+    function goHome() {
+        document.querySelectorAll('.feature-screen').forEach(s => s.style.display = 'none');
+        document.getElementById('main-menu').style.display = 'block';
+    }
+
+    /* === 1. 튜너 로직 (ml5 v0.6.0) === */
+    let audioCtx = null;
+    let pitch;
+    let isTuning = false;
+    const model_url = 'https://cdn.jsdelivr.net/gh/ml5js/ml5-data-and-models/models/pitch-detection/crepe/';
+    const guitarNotes = [
+        { n: 'E2', f: 82.41 }, { n: 'A2', f: 110.00 }, { n: 'D3', f: 146.83 },
+        { n: 'G3', f: 196.00 }, { n: 'B3', f: 246.94 }, { n: 'E4', f: 329.63 }
+    ];
+
+    function toggleTuner() {
+        if (isTuning) { location.reload(); return; }
+        
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+            document.getElementById('freq-display').innerText = "AI가 소리를 듣고 있습니다...";
+            pitch = ml5.pitchDetection(model_url, audioCtx, stream, modelLoaded);
+        }).catch(err => alert("마이크 권한을 허용해주세요!"));
+    }
+
+    function modelLoaded() {
+        isTuning = true;
+        document.getElementById('tuner-btn').innerText = "STOP";
+        document.getElementById('tuner-btn').className = "btn btn-danger";
+        getPitch();
+    }
+
+    function getPitch() {
+        if (!isTuning) return;
+        pitch.getPitch((err, frequency) => {
+            if (frequency) {
+                const closest = guitarNotes.reduce((a, b) => Math.abs(b.f - frequency) < Math.abs(a.f - frequency) ? b : a);
+                const diff = frequency - closest.f;
+                const pos = 50 + (diff * 5);
+                
+                document.getElementById('note-display').innerText = closest.n;
+                document.getElementById('freq-display').innerText = frequency.toFixed(2) + " Hz";
+                
+                const ptr = document.getElementById('tuner-pointer');
+                ptr.style.left = Math.max(5, Math.min(95, pos)) + "%";
+                ptr.style.background = Math.abs(diff) < 1.0 ? "#28a745" : "#dc3545";
+            }
+            if(isTuning) requestAnimationFrame(getPitch);
+            else pitch.getPitch(getPitch);
+        });
+    }
+
+    /* === 2. 플레이어 로직 === */
+    const audio = document.getElementById('guitar-audio');
+    let startL = 0, endL = 0, isL = false;
+    document.getElementById('audio-upload').onchange = (e) => { audio.src = URL.createObjectURL(e.target.files[0]); };
+    document.getElementById('speed-slider').oninput = (e) => { audio.playbackRate = e.target.value; document.getElementById('speed-val').innerText = e.target.value + "x"; };
+    function setStart() { startL = audio.currentTime; }
+    function setEnd() { endL = audio.currentTime; }
+    function toggleLoop() { isL = !isL; document.getElementById('loop-btn').innerText = isL ? "반복 ON" : "반복 OFF"; document.getElementById('loop-btn').className = isL ? "btn btn-danger" : "btn btn-dark"; }
+    audio.ontimeupdate = () => { if (isL && audio.currentTime >= endL) audio.currentTime = startL; };
+
+    /* === 3. 메트로놈 로직 === */
+    let isMetro = false, bpm = 120, nextTime = 0, metroTimer = null;
+    function scheduleNote(t) {
+        if(!audioCtx) audioCtx = new AudioContext();
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.frequency.value = 1000;
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(t); osc.stop(t + 0.1);
+    }
+    function metroLoop() {
+        while (nextTime < audioCtx.currentTime + 0.1) { scheduleNote(nextTime); nextTime += 60/bpm; }
+        metroTimer = setTimeout(metroLoop, 25);
+    }
+    function toggleMetronome() {
+        if (!audioCtx) audioCtx = new AudioContext();
+        isMetro = !isMetro;
+        const btn = document.getElementById('metro-btn');
+        if (isMetro) { nextTime = audioCtx.currentTime; metroLoop(); btn.innerText = "STOP"; btn.className = "btn btn-danger"; }
+        else { clearTimeout(metroTimer); btn.innerText = "START"; btn.className = "btn btn-dark"; }
+    }
+    document.getElementById('bpm-slider').oninput = (e) => { bpm = e.target.value; document.getElementById('bpm-val').innerText = bpm; };
+
+    /* === 4. AI 코치 로직 === */
+    async function askCoach() {
+        const inp = document.getElementById('user-input');
+        const msg = inp.value.trim(); if (!msg) return;
+        addMsg(msg, 'user'); inp.value = '';
+        try {
+            const res = await fetch('http://localhost:5000/api/chat', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg })
+            });
+            const data = await res.json(); addMsg(data.reply, 'coach');
+        } catch { addMsg("서버 연결 실패", 'coach'); }
+    }
+    function addMsg(t, s) {
+        const w = document.getElementById('chat-window');
+        const d = document.createElement('div'); d.className = `message ${s}`; d.innerText = t;
+        w.appendChild(d); w.scrollTop = w.scrollHeight;
+    }
+    document.getElementById('user-input').onkeypress = (e) => { if (e.key === 'Enter') askCoach(); };
+    
+    // 입력창 포커스 시 스타일 변경
+    document.getElementById('user-input').addEventListener('focus', function() { this.style.borderColor = 'var(--primary)'; });
+    document.getElementById('user-input').addEventListener('blur', function() { this.style.borderColor = '#ddd'; });
+</script>
+
+</body>
+</html>

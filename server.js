@@ -2,10 +2,20 @@ const express = require('express');
 const OpenAI = require('openai');
 const cors = require('cors');
 const path = require('path');
-const { exec, execFile } = require('child_process');
+const { execFile } = require('child_process');
 const fs = require('fs');
 const os = require('os');
+const multer = require('multer');
 require('dotenv').config();
+
+// 프로젝트 루트의 .venv Python을 우선 사용 (없으면 시스템 python으로 폴백)
+const VENV_PYTHON_WIN  = path.join(__dirname, '.venv', 'Scripts', 'python.exe');
+const VENV_PYTHON_UNIX = path.join(__dirname, '.venv', 'bin', 'python');
+function getPythonPath() {
+  if (fs.existsSync(VENV_PYTHON_WIN))  return VENV_PYTHON_WIN;
+  if (fs.existsSync(VENV_PYTHON_UNIX)) return VENV_PYTHON_UNIX;
+  return 'python';
+}
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -118,6 +128,91 @@ app.post('/api/youtube', (req, res) => {
       res.send(data);
     });
   });
+});
+
+// 파일 업로드 설정 (최대 50MB, 오디오 파일만 허용)
+const upload = multer({
+  dest: os.tmpdir(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a'];
+    if (allowed.includes(file.mimetype) || /\.(mp3|wav|m4a)$/i.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new Error('mp3, wav, m4a 파일만 업로드할 수 있습니다.'));
+    }
+  },
+});
+
+// 오디오 → 악보(MusicXML) 변환 엔드포인트
+app.post('/api/transcribe-to-sheet', upload.single('audio'), async (req, res) => {
+  const youtubeUrl = req.body && req.body.youtubeUrl;
+  const transcribeScript = path.join(__dirname, 'transcribe.py');
+
+  // transcribe.py 존재 확인
+  if (!fs.existsSync(transcribeScript)) {
+    return res.status(500).json({ error: 'transcribe.py 파일을 찾을 수 없습니다.' });
+  }
+
+  let audioPath = null;
+  let tempYtFile = null;
+
+  try {
+    if (youtubeUrl) {
+      // 유튜브 URL → MP3 추출
+      if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+/.test(youtubeUrl)) {
+        return res.status(400).json({ error: '유효한 유튜브 URL을 입력해주세요.' });
+      }
+
+      const tmpBase = path.join(os.tmpdir(), `gtab_sheet_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+      tempYtFile = `${tmpBase}.mp3`;
+
+      await new Promise((resolve, reject) => {
+        const args = [
+          '-x', '--audio-format', 'mp3', '--audio-quality', '5',
+          '--no-playlist', '--match-filter', 'duration<=600',
+          '-o', `${tmpBase}.%(ext)s`, youtubeUrl,
+        ];
+        execFile('yt-dlp', args, { timeout: 180000 }, (err) => {
+          if (err) reject(new Error('YouTube 오디오 추출 실패. yt-dlp / ffmpeg 설치를 확인해주세요.'));
+          else resolve();
+        });
+      });
+
+      audioPath = tempYtFile;
+    } else if (req.file) {
+      // 업로드된 파일 사용
+      audioPath = req.file.path;
+    } else {
+      return res.status(400).json({ error: '오디오 파일을 업로드하거나 유튜브 URL을 입력해주세요.' });
+    }
+
+    // Python 스크립트로 오디오 → MusicXML 변환
+    const musicXml = await new Promise((resolve, reject) => {
+      const pyEnv = { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' };
+      execFile(getPythonPath(), [transcribeScript, audioPath], { timeout: 300000, maxBuffer: 10 * 1024 * 1024, env: pyEnv }, (err, stdout, stderr) => {
+        if (err) {
+          const msg = stderr || err.message;
+          if (msg.includes('No module named')) {
+            reject(new Error('basic-pitch 또는 music21 라이브러리가 설치되어 있지 않습니다. 터미널에서 다음 명령어를 실행해주세요:\npip install basic-pitch music21'));
+          } else {
+            reject(new Error(`변환 오류: ${msg}`));
+          }
+        } else {
+          resolve(stdout);
+        }
+      });
+    });
+
+    res.json({ musicXml });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    // 임시 파일 정리
+    if (req.file && req.file.path) fs.unlink(req.file.path, () => {});
+    if (tempYtFile) fs.unlink(tempYtFile, () => {});
+  }
 });
 
 app.listen(port, () => {

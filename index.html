@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Guitar Coach Pro</title>
     <script src="https://unpkg.com/ml5@0.6.0/dist/ml5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.6/build/opensheetmusicdisplay.min.js"></script>
     <style>
         :root { --primary: #007bff; --hover: #0056b3; --bg: #f4f7f6; --dark: #333; --card-bg: #ffffff; }
         /* 💡 수정: body가 전체 화면을 차지하도록 변경 */
@@ -111,6 +112,12 @@
         .tech-btn { padding:5px 11px; border:1px solid #dee2e6; background:#fff; border-radius:6px; font-family:'Courier New',monospace; font-size:14px; font-weight:bold; cursor:pointer; color:var(--primary); transition:all 0.15s; }
         .tech-btn:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
         .tech-btn-label { font-size:12px; color:#888; margin-right:4px; white-space:nowrap; }
+
+        /* === 오선지 악보 변환기 === */
+        #osmd-container { min-height: 200px; overflow-x: auto; background: #fff; border-radius: 12px; padding: 12px; }
+        #osmd-container svg { max-width: 100%; height: auto; }
+        .sheet-action-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+        .sheet-install-hint { background: #fff9e6; border: 1px solid #ffc107; border-radius: 10px; padding: 16px 20px; font-size: 13px; color: #856404; white-space: pre-wrap; line-height: 1.7; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -137,6 +144,9 @@
                 </button>
                 <button class="circle-btn" onclick="openScreen('screen-tab')">
                     <span>🎼</span>타브악보
+                </button>
+                <button class="circle-btn" onclick="openScreen('screen-sheet')">
+                    <span>📜</span>오선지 악보
                 </button>
             </div>
         </div>
@@ -321,6 +331,74 @@
                     </div>
                     <div class="tab-grid-wrap">
                         <table class="tab-grid-table" id="tab-grid-table"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 오선지 악보 변환기 -->
+    <div id="screen-sheet" class="feature-screen">
+        <div class="content-wrapper">
+            <div class="header">
+                <button class="back-btn" onclick="goHome()">←</button>
+                <h2>오선지 악보 변환</h2>
+            </div>
+
+            <!-- 입력 탭 선택 -->
+            <div class="tab-selector">
+                <button class="tab-selector-btn active" id="sheet-btn-mp3" onclick="switchSheetTab('mp3')">🎵 오디오 업로드</button>
+                <button class="tab-selector-btn" id="sheet-btn-yt" onclick="switchSheetTab('yt')">📺 유튜브 링크</button>
+            </div>
+
+            <!-- 오디오 업로드 패널 -->
+            <div id="sheet-panel-mp3" class="card">
+                <div id="sheet-drop-zone" class="drop-zone"
+                    onclick="document.getElementById('sheet-file-input').click()"
+                    ondragover="event.preventDefault();this.classList.add('dragover')"
+                    ondragleave="this.classList.remove('dragover')"
+                    ondrop="handleSheetFileDrop(event)">
+                    <div style="font-size:36px;margin-bottom:8px;">📜</div>
+                    <div style="font-weight:bold;margin-bottom:4px;">오디오 파일을 드래그하거나 클릭하세요</div>
+                    <div id="sheet-drop-file-name" style="font-size:13px;margin-top:6px;">지원 형식: MP3, WAV, M4A (최대 50MB)</div>
+                </div>
+                <input type="file" id="sheet-file-input" accept=".mp3,.wav,.m4a,audio/*" style="display:none" onchange="handleSheetFileSelect(event)">
+                <button class="btn btn-primary" onclick="startSheetMp3()" style="margin-top:14px;">🎼 오선지 악보 변환 시작</button>
+            </div>
+
+            <!-- 유튜브 패널 -->
+            <div id="sheet-panel-yt" class="card" style="display:none">
+                <label style="font-weight:bold;display:block;margin-bottom:10px;">유튜브 URL 입력</label>
+                <input type="text" id="sheet-yt-url" placeholder="https://www.youtube.com/watch?v=..."
+                    style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;transition:border 0.2s;">
+                <button class="btn btn-primary" onclick="startSheetYoutube()" style="margin-top:14px;">📺 유튜브에서 악보 변환</button>
+                <p style="font-size:12px;color:#aaa;margin:10px 0 0;">※ 최대 10분 이내 영상만 지원합니다.</p>
+            </div>
+
+            <!-- 로딩 -->
+            <div id="sheet-loading" style="display:none;text-align:center;padding:40px 20px;">
+                <div class="spinner"></div>
+                <div id="sheet-loading-msg" style="color:#666;font-size:15px;">변환 중...</div>
+                <p style="font-size:12px;color:#aaa;margin-top:8px;">서버에서 AI 음정 분석 중입니다. 1~3분 소요될 수 있습니다.</p>
+            </div>
+
+            <!-- 에러 -->
+            <div id="sheet-error" style="display:none;background:#fff5f5;border:1px solid #dc3545;border-radius:12px;padding:20px;color:#dc3545;text-align:center;margin-top:10px;">
+                <div style="font-size:24px;margin-bottom:8px;">⚠️</div>
+                <div id="sheet-error-msg" style="white-space:pre-wrap;text-align:left;font-size:14px;"></div>
+            </div>
+
+            <!-- 결과 -->
+            <div id="sheet-result" style="display:none">
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h3 style="margin:0;font-size:17px;">생성된 오선지 악보</h3>
+                    </div>
+                    <div id="osmd-container"></div>
+                    <div class="sheet-action-bar">
+                        <button class="btn-sm btn-sm-primary" onclick="downloadMusicXml()">⬇️ MusicXML 다운로드</button>
+                        <button class="btn-sm btn-sm-dark" onclick="resetSheetResult()">↺ 다시 변환</button>
                     </div>
                 </div>
             </div>
@@ -1001,6 +1079,121 @@
             await navigator.clipboard.writeText(document.getElementById('tab-display').innerText);
             alert('클립보드에 복사되었습니다!');
         } catch { alert('복사 실패. 브라우저 권한을 확인해주세요.'); }
+    }
+
+    /* === 6. 오선지 악보 변환기 === */
+
+    let sheetAudioFile = null;
+    let currentMusicXml = null;
+    let osmdInstance   = null;
+
+    function switchSheetTab(t) {
+        document.getElementById('sheet-panel-mp3').style.display = t === 'mp3' ? 'block' : 'none';
+        document.getElementById('sheet-panel-yt').style.display  = t === 'yt'  ? 'block' : 'none';
+        document.getElementById('sheet-btn-mp3').classList.toggle('active', t === 'mp3');
+        document.getElementById('sheet-btn-yt').classList.toggle('active',  t === 'yt');
+    }
+
+    function handleSheetFileDrop(e) {
+        e.preventDefault();
+        document.getElementById('sheet-drop-zone').classList.remove('dragover');
+        const f = e.dataTransfer.files[0];
+        if (f) setSheetFile(f);
+        else alert('오디오 파일을 올려주세요.');
+    }
+    function handleSheetFileSelect(e) { const f = e.target.files[0]; if (f) setSheetFile(f); }
+    function setSheetFile(f) {
+        sheetAudioFile = f;
+        document.getElementById('sheet-drop-zone').classList.add('has-file');
+        document.getElementById('sheet-drop-file-name').innerText = '✅ ' + f.name;
+    }
+
+    function showSheetLoading(msg) {
+        document.getElementById('sheet-loading').style.display = 'block';
+        document.getElementById('sheet-loading-msg').innerText = msg || '변환 중...';
+        document.getElementById('sheet-error').style.display  = 'none';
+        document.getElementById('sheet-result').style.display = 'none';
+    }
+    function showSheetError(msg) {
+        document.getElementById('sheet-loading').style.display = 'none';
+        document.getElementById('sheet-error').style.display  = 'block';
+        document.getElementById('sheet-error-msg').innerText  = msg;
+    }
+
+    async function startSheetMp3() {
+        if (!sheetAudioFile) { alert('파일을 먼저 선택해주세요!'); return; }
+        showSheetLoading('오디오 파일 업로드 중...');
+        try {
+            const form = new FormData();
+            form.append('audio', sheetAudioFile);
+            const res = await fetch((window.GUITAR_API_URL || '') + '/api/transcribe-to-sheet', {
+                method: 'POST', body: form,
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '서버 오류');
+            await renderSheetMusic(data.musicXml);
+        } catch (e) { showSheetError(e.message); }
+    }
+
+    async function startSheetYoutube() {
+        const url = document.getElementById('sheet-yt-url').value.trim();
+        if (!url) { alert('유튜브 URL을 입력해주세요!'); return; }
+        showSheetLoading('유튜브 오디오 다운로드 중... (최대 1~2분 소요)');
+        try {
+            const res = await fetch((window.GUITAR_API_URL || '') + '/api/transcribe-to-sheet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ youtubeUrl: url }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '서버 오류');
+            await renderSheetMusic(data.musicXml);
+        } catch (e) { showSheetError(e.message); }
+    }
+
+    async function renderSheetMusic(musicXml) {
+        currentMusicXml = musicXml;
+        document.getElementById('sheet-loading').style.display = 'none';
+        document.getElementById('sheet-result').style.display  = 'block';
+
+        const container = document.getElementById('osmd-container');
+        container.innerHTML = '';
+
+        try {
+            if (!window.opensheetmusicdisplay) throw new Error('OSMD 라이브러리 로드 실패');
+            const osmd = new window.opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
+                autoResize: true,
+                drawTitle: true,
+                drawComposer: false,
+            });
+            osmdInstance = osmd;
+            await osmd.load(musicXml);
+            osmd.render();
+        } catch (e) {
+            // OSMD 렌더링 실패 시 XML 다운로드 안내
+            container.innerHTML = `<p style="color:#555;font-size:14px;padding:20px;">악보 렌더링에 실패했습니다. MusicXML 파일을 다운로드하여 MuseScore 등에서 열어보세요.</p>`;
+        }
+    }
+
+    function downloadMusicXml() {
+        if (!currentMusicXml) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([currentMusicXml], { type: 'application/vnd.recordare.musicxml+xml' }));
+        a.download = 'sheet_music.musicxml';
+        a.click();
+    }
+
+    function resetSheetResult() {
+        currentMusicXml = null;
+        osmdInstance    = null;
+        document.getElementById('sheet-result').style.display  = 'none';
+        document.getElementById('sheet-error').style.display   = 'none';
+        document.getElementById('sheet-loading').style.display = 'none';
+        document.getElementById('sheet-drop-zone').classList.remove('has-file');
+        document.getElementById('sheet-drop-file-name').innerText = '지원 형식: MP3, WAV, M4A (최대 50MB)';
+        document.getElementById('sheet-file-input').value = '';
+        document.getElementById('sheet-yt-url').value = '';
+        sheetAudioFile = null;
     }
 </script>
 

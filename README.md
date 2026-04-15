@@ -1,6 +1,6 @@
 # Guitar Coach Pro
 
-기타 튜너, 연습 플레이어, 메트로놈, AI 코치, **타브악보 변환기**를 하나로 묶은 웹 앱.
+기타 튜너, 연습 플레이어, 메트로놈, AI 코치, **타브악보 변환기**, **오선지 악보 변환기**를 하나로 묶은 웹 앱.
 
 ---
 
@@ -13,6 +13,7 @@
 | 메트로놈 | 40~240 BPM |
 | AI 마스터 코치 | GPT-4o-mini 기반 기타 레슨 |
 | **타브악보 변환기** | MP3 업로드 또는 유튜브 URL → 6줄 TAB 생성 + 편집 |
+| **오선지 악보 변환기** | MP3 업로드 또는 유튜브 URL → 오선지 악보(MusicXML) 변환 + 브라우저 렌더링 |
 
 ---
 
@@ -27,7 +28,7 @@
 ### 설치
 
 ```bash
-# 1. 의존성 설치
+# 1. Node.js 의존성 설치
 npm install
 
 # 2. 환경 변수 설정
@@ -38,6 +39,9 @@ cp .env.example .env
 pip install yt-dlp
 # ffmpeg도 설치 필요: https://ffmpeg.org/download.html
 # Windows: winget install ffmpeg  /  macOS: brew install ffmpeg
+
+# 4. 오선지 악보 변환 라이브러리 설치 (오선지 악보 기능 필요 시)
+pip install basic-pitch music21
 ```
 
 ### 실행
@@ -121,10 +125,35 @@ app.use(cors({ origin: 'https://my-guitar-site.netlify.app' }));
 
 ---
 
+## 오선지 악보 변환기 사용법
+
+1. 메인 메뉴에서 **오선지 악보** 버튼 클릭
+2. **오디오 업로드** 탭: MP3/WAV/M4A 파일 드래그 또는 클릭하여 선택 → 변환 시작
+3. **유튜브 링크** 탭: URL 붙여넣기 → 변환 시작 (서버에서 1~3분 소요)
+4. 변환 완료 후:
+   - 브라우저에서 오선지 악보가 바로 렌더링됩니다
+   - **MusicXML 다운로드** 버튼으로 파일 저장 가능
+   - 다운로드한 `.musicxml` 파일은 MuseScore, Finale, Sibelius 등에서 열 수 있습니다
+
+> **사전 설치 필요**: `pip install basic-pitch music21`  
+> 설치가 안 된 경우 서버가 설치 안내 메시지를 반환합니다.
+
+### 변환 파이프라인
+
+```
+오디오 (MP3/WAV/M4A)
+  → basic-pitch (Spotify AI 음정 감지) → MIDI
+  → music21 (MIDI → MusicXML)
+  → OpenSheetMusicDisplay (브라우저 악보 렌더링)
+```
+
+---
+
 ## 기술 스택
 
-- **Frontend**: Vanilla JS + HTML5 Web Audio API (피치 감지는 자기상관 알고리즘 내장)
-- **Backend**: Node.js + Express
-- **AI**: OpenAI GPT-4o-mini
+- **Frontend**: Vanilla JS + HTML5 Web Audio API + OpenSheetMusicDisplay (악보 렌더링)
+- **Backend**: Node.js + Express + multer (파일 업로드)
+- **AI**: OpenAI GPT-4o-mini (코치) + basic-pitch (음정 감지)
+- **악보 변환**: music21 (MIDI → MusicXML)
 - **유튜브 추출**: yt-dlp + ffmpeg (서버사이드)
 - **배포**: Railway / Render / Fly.io (Dockerfile + nixpacks.toml 포함)

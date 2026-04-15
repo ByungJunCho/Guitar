@@ -76,6 +76,41 @@
         /* 애니메이션 */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* === 타브악보 변환기 === */
+        .tab-selector { display: flex; gap: 4px; margin-bottom: 20px; background: #e9ecef; border-radius: 12px; padding: 4px; }
+        .tab-selector-btn { flex: 1; padding: 10px; border: none; background: transparent; cursor: pointer; font-size: 14px; font-weight: 600; border-radius: 10px; transition: all 0.2s; color: #666; }
+        .tab-selector-btn.active { background: #fff; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .drop-zone { border: 2px dashed #ccc; border-radius: 12px; padding: 36px 20px; text-align: center; cursor: pointer; transition: all 0.2s; color: #aaa; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: rgba(0,123,255,0.04); color: var(--primary); }
+        .drop-zone.has-file { border-color: #28a745; color: #28a745; }
+        .bpm-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+        .bpm-row label { font-size: 13px; color: #666; white-space: nowrap; }
+        .bpm-row input[type=range] { flex: 1; }
+        .bpm-row span { font-size: 14px; font-weight: bold; color: var(--primary); min-width: 68px; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e9ecef; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #tab-display { font-family: 'Courier New', Courier, monospace; font-size: 14px; line-height: 2.1; background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 12px; overflow-x: auto; white-space: pre; margin: 0; }
+        .tab-action-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+        .btn-sm { padding: 8px 14px; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: background 0.2s; color: #fff; }
+        .btn-sm-primary { background: var(--primary); } .btn-sm-primary:hover { background: var(--hover); }
+        .btn-sm-dark { background: #343a40; } .btn-sm-dark:hover { background: #23272b; }
+        .btn-sm-success { background: #28a745; } .btn-sm-success:hover { background: #218838; }
+        .btn-sm-warning { background: #ffc107; color: #333; } .btn-sm-warning:hover { background: #e0a800; }
+        .tab-grid-wrap { overflow-x: auto; }
+        .tab-grid-table { border-collapse: collapse; font-family: 'Courier New', monospace; }
+        .tab-grid-table td { padding: 2px; }
+        .tab-string-label { font-weight: bold; font-size: 15px; padding-right: 8px; color: var(--dark); }
+        .tab-cell { width: 38px; height: 30px; text-align: center; font-size: 13px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa; cursor: text; font-family: 'Courier New', monospace; transition: border 0.1s; box-sizing: border-box; }
+        .tab-cell:hover { border-color: var(--primary); }
+        .tab-cell:focus { outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
+        .tab-cell.has-note { background: #e8f4fd; color: var(--primary); font-weight: bold; }
+        .tab-chord-cell { background: #fff9e6 !important; color: #856404 !important; font-weight: 600; width: 52px; }
+        .tab-chord-cell:focus { border-color: #ffc107 !important; box-shadow: 0 0 0 2px rgba(255,193,7,0.3) !important; }
+        .technique-toolbar { display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:12px; padding:10px; background:#f8f9fa; border-radius:8px; border:1px solid #e9ecef; }
+        .tech-btn { padding:5px 11px; border:1px solid #dee2e6; background:#fff; border-radius:6px; font-family:'Courier New',monospace; font-size:14px; font-weight:bold; cursor:pointer; color:var(--primary); transition:all 0.15s; }
+        .tech-btn:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+        .tech-btn-label { font-size:12px; color:#888; margin-right:4px; white-space:nowrap; }
     </style>
 </head>
 <body>
@@ -99,6 +134,9 @@
                 </button>
                 <button class="circle-btn" onclick="openScreen('screen-coach')">
                     <span>🤖</span>AI 코치
+                </button>
+                <button class="circle-btn" onclick="openScreen('screen-tab')">
+                    <span>🎼</span>타브악보
                 </button>
             </div>
         </div>
@@ -171,6 +209,120 @@
             <div style="display: flex; gap: 10px; padding-top: 15px;">
                 <input type="text" id="user-input" placeholder="질문을 입력하세요..." style="flex:1; padding:14px; border:1px solid #ddd; border-radius:10px; font-size: 15px; outline: none; transition: border 0.2s;">
                 <button id="send-btn" class="btn btn-primary" style="width: 80px; margin:0;" onclick="askCoach()">전송</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 타브악보 변환기 -->
+    <div id="screen-tab" class="feature-screen">
+        <div class="content-wrapper">
+            <div class="header">
+                <button class="back-btn" onclick="goHome()">←</button>
+                <h2>타브악보 변환기</h2>
+            </div>
+
+            <!-- 입력 탭 선택 -->
+            <div class="tab-selector">
+                <button class="tab-selector-btn active" id="tab-btn-mp3" onclick="switchInputTab('mp3')">🎵 MP3 업로드</button>
+                <button class="tab-selector-btn" id="tab-btn-yt" onclick="switchInputTab('yt')">📺 유튜브 링크</button>
+            </div>
+
+            <!-- MP3 패널 -->
+            <div id="panel-mp3" class="card">
+                <div id="drop-zone" class="drop-zone"
+                    onclick="document.getElementById('tab-file-input').click()"
+                    ondragover="event.preventDefault();this.classList.add('dragover')"
+                    ondragleave="this.classList.remove('dragover')"
+                    ondrop="handleFileDrop(event)">
+                    <div style="font-size:36px;margin-bottom:8px;">🎵</div>
+                    <div style="font-weight:bold;margin-bottom:4px;">MP3 파일을 드래그하거나 클릭하세요</div>
+                    <div id="drop-file-name" style="font-size:13px;margin-top:6px;">지원 형식: MP3, WAV, M4A, OGG</div>
+                </div>
+                <input type="file" id="tab-file-input" accept="audio/*" style="display:none" onchange="handleFileSelect(event)">
+                <div class="bpm-row">
+                    <label>분석 BPM:</label>
+                    <input type="range" id="bpm-mp3" min="60" max="200" value="120"
+                        oninput="document.getElementById('bpm-mp3-val').innerText=this.value+' BPM'">
+                    <span id="bpm-mp3-val">120 BPM</span>
+                </div>
+                <div class="bpm-row">
+                    <label>감지 민감도:</label>
+                    <input type="range" id="sens-mp3" min="0.2" max="1.0" step="0.05" value="0.55"
+                        oninput="document.getElementById('sens-mp3-val').innerText=Math.round(this.value*100)+'%'">
+                    <span id="sens-mp3-val">55%</span>
+                </div>
+                <button class="btn btn-primary" onclick="startMp3Analysis()" style="margin-top:14px;">🔍 타브악보 변환 시작</button>
+            </div>
+
+            <!-- 유튜브 패널 -->
+            <div id="panel-yt" class="card" style="display:none">
+                <label style="font-weight:bold;display:block;margin-bottom:10px;">유튜브 URL 입력</label>
+                <input type="text" id="yt-url-input" placeholder="https://www.youtube.com/watch?v=..."
+                    style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;transition:border 0.2s;">
+                <div class="bpm-row" style="margin-top:14px;">
+                    <label>분석 BPM:</label>
+                    <input type="range" id="bpm-yt" min="60" max="200" value="120"
+                        oninput="document.getElementById('bpm-yt-val').innerText=this.value+' BPM'">
+                    <span id="bpm-yt-val">120 BPM</span>
+                </div>
+                <div class="bpm-row">
+                    <label>감지 민감도:</label>
+                    <input type="range" id="sens-yt" min="0.2" max="1.0" step="0.05" value="0.55"
+                        oninput="document.getElementById('sens-yt-val').innerText=Math.round(this.value*100)+'%'">
+                    <span id="sens-yt-val">55%</span>
+                </div>
+                <button class="btn btn-primary" onclick="startYoutubeAnalysis()" style="margin-top:14px;">📺 타브악보 변환 시작</button>
+                <p style="font-size:12px;color:#aaa;margin:10px 0 0;">※ 최대 10분 이내 영상만 지원합니다. 서버에서 오디오를 다운로드하므로 시간이 걸릴 수 있습니다.</p>
+            </div>
+
+            <!-- 로딩 -->
+            <div id="tab-loading" style="display:none;text-align:center;padding:40px 20px;">
+                <div class="spinner"></div>
+                <div id="tab-loading-msg" style="color:#666;font-size:15px;">분석 중...</div>
+            </div>
+
+            <!-- 에러 -->
+            <div id="tab-error" style="display:none;background:#fff5f5;border:1px solid #dc3545;border-radius:12px;padding:20px;color:#dc3545;text-align:center;margin-top:10px;">
+                <div style="font-size:24px;margin-bottom:8px;">⚠️</div>
+                <div id="tab-error-msg">오류가 발생했습니다.</div>
+            </div>
+
+            <!-- 결과 -->
+            <div id="tab-result" style="display:none">
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h3 style="margin:0;font-size:17px;">생성된 타브악보</h3>
+                        <span id="tab-mode-badge" style="font-size:12px;background:#e8f4fd;color:var(--primary);padding:4px 12px;border-radius:20px;font-weight:600;">보기 모드</span>
+                    </div>
+                    <pre id="tab-display"></pre>
+                    <div class="tab-action-bar">
+                        <button id="edit-mode-btn" class="btn-sm btn-sm-dark" onclick="toggleEditMode()">✏️ 편집 모드</button>
+                        <button id="chord-toggle-btn" class="btn-sm btn-sm-primary" onclick="toggleChords()">코드명 ON</button>
+                        <button class="btn-sm btn-sm-warning" onclick="resetTab()">↺ 초기화</button>
+                        <button class="btn-sm btn-sm-dark" onclick="addBeat()">+ 마디 추가</button>
+                        <button class="btn-sm btn-sm-primary" onclick="downloadTxt()">⬇️ TXT 다운로드</button>
+                        <button class="btn-sm btn-sm-success" onclick="copyTab()">📋 복사</button>
+                    </div>
+                </div>
+                <div id="tab-editor" class="card" style="display:none">
+                    <h4 style="margin:0 0 6px;font-size:15px;">셀 편집</h4>
+                    <p style="font-size:12px;color:#888;margin:0 0 10px;">셀 클릭 후 값 입력. 빈칸=빈 줄(-). 노란색 행=코드명.</p>
+                    <div class="technique-toolbar">
+                        <span class="tech-btn-label">주법 삽입:</span>
+                        <button class="tech-btn" onclick="insertTechnique('h')" title="해머온 (예: 5h7)">h</button>
+                        <button class="tech-btn" onclick="insertTechnique('p')" title="풀오프 (예: 7p5)">p</button>
+                        <button class="tech-btn" onclick="insertTechnique('b')" title="벤드 (예: 7b)">b</button>
+                        <button class="tech-btn" onclick="insertTechnique('br')" title="벤드&릴리즈 (예: 7br)">br</button>
+                        <button class="tech-btn" onclick="insertTechnique('~')" title="비브라토 (예: 7~)">~</button>
+                        <button class="tech-btn" onclick="insertTechnique('/')" title="슬라이드 업 (예: 5/7)">/</button>
+                        <button class="tech-btn" onclick="insertTechnique('\\')" title="슬라이드 다운 (예: 7\5)">\</button>
+                        <button class="tech-btn" onclick="insertTechnique('x')" title="뮤트">x</button>
+                        <button class="tech-btn" onclick="insertTechnique('PM')" title="팜뮤트">PM</button>
+                    </div>
+                    <div class="tab-grid-wrap">
+                        <table class="tab-grid-table" id="tab-grid-table"></table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -292,7 +444,7 @@
         chatWindow.scrollTop = chatWindow.scrollHeight;
 
         try {
-            const res = await fetch('http://localhost:5000/api/chat', {
+            const res = await fetch((window.GUITAR_API_URL || '') + '/api/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: msg })
             });
@@ -344,6 +496,512 @@
 
     // Initial check
     updateButtonState();
+
+    /* === 5. 타브악보 변환기 (폴리포닉 + 주법 감지) === */
+
+    const TAB_STRINGS = ['e','B','G','D','A','E'];
+    const TAB_MIDI    = [64, 59, 55, 50, 45, 40]; // 고음 e → 저음 E
+    const NOTE_NAMES  = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+    // 코드 인터벌 패턴 (semitone intervals from root, sorted)
+    const CHORD_PATS = {
+        '0,4,7':'', '0,3,7':'m', '0,4,7,10':'7', '0,4,7,11':'maj7',
+        '0,3,7,10':'m7', '0,2,7':'sus2', '0,5,7':'sus4',
+        '0,4,8':'aug', '0,3,6':'dim', '0,4,7,9':'6', '0,3,7,9':'m6',
+        '0,3,6,10':'m7b5', '0,4,6':'b5',
+    };
+
+    let tabBeats = [], origTabBeats = [], tabAudioFile = null, tabEditMode = false, showChords = true;
+
+    // ─── 입력 탭 전환 ───────────────────────────────────────────
+    function switchInputTab(t) {
+        document.getElementById('panel-mp3').style.display = t==='mp3'?'block':'none';
+        document.getElementById('panel-yt').style.display  = t==='yt' ?'block':'none';
+        document.getElementById('tab-btn-mp3').classList.toggle('active', t==='mp3');
+        document.getElementById('tab-btn-yt').classList.toggle('active',  t==='yt');
+    }
+
+    // ─── 파일 처리 ──────────────────────────────────────────────
+    function handleFileDrop(e) {
+        e.preventDefault();
+        document.getElementById('drop-zone').classList.remove('dragover');
+        const f = e.dataTransfer.files[0];
+        if (f && f.type.startsWith('audio/')) setTabFile(f);
+        else alert('오디오 파일만 업로드할 수 있습니다.');
+    }
+    function handleFileSelect(e) { const f = e.target.files[0]; if (f) setTabFile(f); }
+    function setTabFile(f) {
+        tabAudioFile = f;
+        document.getElementById('drop-zone').classList.add('has-file');
+        document.getElementById('drop-file-name').innerText = '✅ ' + f.name;
+    }
+
+    // ─── 주파수 / MIDI 변환 ──────────────────────────────────────
+    function freqToMidi(f)      { return 12 * Math.log2(f / 440) + 69; }
+    function freqToMidiR(f)     { return Math.round(freqToMidi(f)); }
+    function midiToFret(midi) {
+        let best = null;
+        for (let s = 0; s < 6; s++) {
+            const fr = midi - TAB_MIDI[s];
+            if (fr >= 0 && fr <= 24 && (!best || fr < best.fret)) best = { string: s, fret: fr };
+        }
+        return best;
+    }
+
+    // ─── FFT (Cooley-Tukey in-place) ─────────────────────────────
+    function computeFFTMag(samples) {
+        const N = samples.length;
+        const re = new Float64Array(N), im = new Float64Array(N);
+        for (let i = 0; i < N; i++)
+            re[i] = samples[i] * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1)));
+        // bit-reversal
+        for (let i = 1, j = 0; i < N; i++) {
+            let bit = N >> 1;
+            for (; j & bit; bit >>= 1) j ^= bit;
+            j ^= bit;
+            if (i < j) {
+                [re[i], re[j]] = [re[j], re[i]];
+                [im[i], im[j]] = [im[j], im[i]];
+            }
+        }
+        // butterfly
+        for (let len = 2; len <= N; len <<= 1) {
+            const ang = -2 * Math.PI / len, wR = Math.cos(ang), wI = Math.sin(ang);
+            for (let i = 0; i < N; i += len) {
+                let cr = 1, ci = 0;
+                for (let j = 0; j < len >> 1; j++) {
+                    const ur = re[i+j], ui = im[i+j];
+                    const vr = re[i+j+(len>>1)]*cr - im[i+j+(len>>1)]*ci;
+                    const vi = re[i+j+(len>>1)]*ci + im[i+j+(len>>1)]*cr;
+                    re[i+j] = ur+vr; im[i+j] = ui+vi;
+                    re[i+j+(len>>1)] = ur-vr; im[i+j+(len>>1)] = ui-vi;
+                    const nr = cr*wR - ci*wI; ci = cr*wI + ci*wR; cr = nr;
+                }
+            }
+        }
+        const mag = new Float32Array(N >> 1);
+        for (let i = 0; i < N >> 1; i++) mag[i] = Math.sqrt(re[i]*re[i] + im[i]*im[i]);
+        return mag;
+    }
+
+    // ─── 폴리포닉 피치 감지 (FFT 피크 + 배음 제거) ──────────────
+    function detectPolyphonicPitches(frame, sr, sensitivity) {
+        const N   = frame.length;
+        const mag = computeFFTMag(frame);
+        const minB = Math.max(1, Math.floor(55  * N / sr));   // ~55 Hz
+        const maxB = Math.min(N >> 1, Math.floor(1400 * N / sr)); // ~1400 Hz
+
+        let peak = 0;
+        for (let i = minB; i < maxB; i++) if (mag[i] > peak) peak = mag[i];
+        if (peak < 0.001) return [];
+
+        // sensitivity 0.2~1.0: 높을수록 약한 음도 감지
+        const thr = peak * (1 - sensitivity * 0.88);
+        const peaks = [];
+        for (let i = minB + 1; i < maxB - 1; i++) {
+            if (mag[i] > mag[i-1] && mag[i] > mag[i+1] && mag[i] > thr)
+                peaks.push({ bin: i, mag: mag[i] });
+        }
+        peaks.sort((a, b) => b.mag - a.mag);
+
+        // 배음(harmonic) 제거: 이미 선택된 음의 정수배 주파수면 스킵
+        const kept = [];
+        for (const p of peaks) {
+            const f = p.bin * sr / N;
+            let isH = false;
+            for (const k of kept) {
+                const r = f / (k.bin * sr / N);
+                if (r > 1.75 && Math.abs(r - Math.round(r)) < 0.08) { isH = true; break; }
+            }
+            if (!isH) { kept.push(p); if (kept.length >= 6) break; }
+        }
+        return kept
+            .map(p => ({ freq: p.bin * sr / N, midi: freqToMidi(p.bin * sr / N), mag: p.mag }))
+            .filter(n => n.midi >= 40 && n.midi <= 84); // 기타 음역
+    }
+
+    // ─── 코드 감지 ───────────────────────────────────────────────
+    function detectChord(midiNotes) {
+        if (midiNotes.length < 2) return null;
+        const classes = [...new Set(midiNotes.map(m => Math.round(m) % 12))];
+        for (let root = 0; root < 12; root++) {
+            const ivs = classes.map(c => (c - root + 12) % 12).sort((a, b) => a - b).join(',');
+            if (CHORD_PATS[ivs] !== undefined) return NOTE_NAMES[root] + CHORD_PATS[ivs];
+        }
+        // 3음 이상일 때 5th 제외 재시도
+        if (classes.length >= 3) {
+            for (let root = 0; root < 12; root++) {
+                const ivs = classes
+                    .map(c => (c - root + 12) % 12)
+                    .filter(v => v !== 7) // 완전 5도 제외
+                    .sort((a, b) => a - b).join(',');
+                if (CHORD_PATS[ivs] !== undefined) return NOTE_NAMES[root] + CHORD_PATS[ivs];
+            }
+        }
+        return null;
+    }
+
+    // ─── 주법 감지 (피치 궤적 분석) ─────────────────────────────
+    function detectTechnique(pitchSeq) {
+        // pitchSeq: MIDI float 배열 (같은 줄, 비트 내 연속 프레임)
+        const valid = pitchSeq.filter(p => p > 0);
+        if (valid.length < 3) return null;
+
+        const first = valid[0], last = valid[valid.length - 1];
+        const diff  = last - first;
+        const mx    = Math.max(...valid), mn = Math.min(...valid);
+
+        // 비브라토: 방향 전환 ≥ 2회 + 진폭 작음
+        let turns = 0;
+        for (let i = 1; i < valid.length - 1; i++)
+            if ((valid[i] - valid[i-1]) * (valid[i+1] - valid[i]) < 0) turns++;
+        if (turns >= 2 && mx - mn < 2.5 && Math.abs(diff) < 1.5) return '~';
+
+        // 벤드 & 릴리즈: 올라갔다가 내려옴
+        const mxIdx = valid.indexOf(mx);
+        if (mx - first >= 0.8 && last < mx - 0.8) return 'br';
+
+        // 벤드: 상승 후 유지
+        if (diff >= 0.8 && diff <= 5 && turns <= 1) return 'b';
+
+        // 슬라이드 (단조로운 상승/하강)
+        if (Math.abs(diff) >= 1.5) {
+            const mono = valid.every((v, i) =>
+                i === 0 || (diff > 0 ? v >= valid[i-1] - 0.6 : v <= valid[i-1] + 0.6));
+            if (mono) return diff > 0 ? '/' : '\\';
+            // 단조롭지 않은 큰 변화 → 해머온/풀오프
+            return diff > 0 ? 'h' : 'p';
+        }
+        return null;
+    }
+
+    // ─── 메인 분석 ───────────────────────────────────────────────
+    async function analyzeAudioBuffer(audioBuf, bpm, sensitivity) {
+        const ch  = audioBuf.getChannelData(0);
+        const sr  = audioBuf.sampleRate;
+        const beatSec = 60 / bpm;
+        const WIN = 2048;   // ~46ms @44100Hz
+        const HOP = 512;    // ~12ms hop → 세밀한 주법 추적
+
+        const totalFrames = Math.floor((ch.length - WIN) / HOP);
+        const frames = [];
+
+        // 1단계: 프레임별 폴리포닉 피치 분석
+        for (let f = 0; f < totalFrames; f++) {
+            if (f % 100 === 0) {
+                const pct = Math.round(f / totalFrames * 65);
+                document.getElementById('tab-loading-msg').innerText = `폴리포닉 분석 중... ${pct}%`;
+                await new Promise(r => setTimeout(r, 0));
+            }
+            const off   = f * HOP;
+            const frame = ch.slice(off, off + WIN);
+            frames.push({ time: off / sr, notes: detectPolyphonicPitches(frame, sr, sensitivity) });
+        }
+
+        // 2단계: 비트별 그룹화 + 주법/코드 감지
+        document.getElementById('tab-loading-msg').innerText = '주법 및 코드 분석 중... 70%';
+        await new Promise(r => setTimeout(r, 0));
+
+        const maxBeats = Math.min(Math.floor(audioBuf.duration / beatSec), 64);
+        const beats = [];
+
+        for (let b = 0; b < maxBeats; b++) {
+            const bStart = b * beatSec, bEnd = (b + 1) * beatSec;
+            const bFrames = frames.filter(f => f.time >= bStart && f.time < bEnd);
+
+            // 줄별 피치 시퀀스 수집
+            const strTrack = Array.from({ length: 6 }, () => []);
+            const allMidis = [];
+
+            for (const fr of bFrames) {
+                for (const n of fr.notes) {
+                    const pos = midiToFret(Math.round(n.midi));
+                    if (pos) {
+                        strTrack[pos.string].push({ midi: n.midi, fret: pos.fret, time: fr.time });
+                        allMidis.push(Math.round(n.midi));
+                    }
+                }
+            }
+
+            const slots     = ['-','-','-','-','-','-'];
+            const cleanFrets = [null,null,null,null,null,null];
+            const prevBeat  = beats[b - 1];
+
+            for (let s = 0; s < 6; s++) {
+                const track = strTrack[s];
+                if (track.length === 0) continue;
+
+                // 최다 빈도 프렛
+                const fc = {};
+                for (const t of track) fc[t.fret] = (fc[t.fret] || 0) + 1;
+                const topFret = +Object.entries(fc).sort((a, b) => b[1] - a[1])[0][0];
+                cleanFrets[s] = topFret;
+
+                const pitchSeq = track.map(t => t.midi);
+                const tech     = detectTechnique(pitchSeq);
+
+                const prevFret = prevBeat ? prevBeat.cleanFrets[s] : null;
+                const hasTrans = prevFret !== null && prevFret !== topFret && Math.abs(topFret - prevFret) <= 12;
+
+                if (tech === '~')                  slots[s] = topFret + '~';
+                else if (tech === 'b')             slots[s] = topFret + 'b';
+                else if (tech === 'br')            slots[s] = topFret + 'br';
+                else if (hasTrans && tech === '/')  slots[s] = prevFret + '/' + topFret;
+                else if (hasTrans && tech === '\\') slots[s] = prevFret + '\\' + topFret;
+                else if (hasTrans && tech === 'h')  slots[s] = prevFret + 'h' + topFret;
+                else if (hasTrans && tech === 'p')  slots[s] = prevFret + 'p' + topFret;
+                else                               slots[s] = String(topFret);
+            }
+
+            // 뮤트 노트 감지: 아주 짧은 서스테인 (RMS 급락)
+            if (bFrames.length > 4) {
+                const rmsArr = bFrames.map(fr => {
+                    const off = Math.floor(fr.time * sr);
+                    let s2 = 0;
+                    const wl = Math.min(WIN, ch.length - off);
+                    for (let i = 0; i < wl; i++) s2 += ch[off+i] * ch[off+i];
+                    return Math.sqrt(s2 / wl);
+                });
+                const rmsMax = Math.max(...rmsArr);
+                const rmsTail = rmsArr.slice(-Math.floor(rmsArr.length * 0.4));
+                const rmsTailAvg = rmsTail.reduce((a, b) => a + b, 0) / rmsTail.length;
+                if (rmsMax > 0.01 && rmsTailAvg < rmsMax * 0.08) {
+                    // 서스테인이 80% 이상 급락 → 뮤트된 음
+                    for (let s = 0; s < 6; s++) {
+                        if (slots[s] !== '-' && !/[hpb\/\\~]/.test(slots[s]))
+                            slots[s] = slots[s] + 'x'; // 뮤트 표기 추가
+                    }
+                }
+            }
+
+            const uniqueMidis = [...new Set(allMidis)];
+            const chord = uniqueMidis.length >= 2 ? detectChord(uniqueMidis) : null;
+            beats.push({ slots: [...slots], cleanFrets: [...cleanFrets], chord });
+        }
+
+        document.getElementById('tab-loading-msg').innerText = '완료!';
+        return beats;
+    }
+
+    // ─── UI 헬퍼 ─────────────────────────────────────────────────
+    function showTabLoading(msg) {
+        document.getElementById('tab-loading').style.display = 'block';
+        document.getElementById('tab-loading-msg').innerText = msg || '분석 중...';
+        document.getElementById('tab-error').style.display  = 'none';
+        document.getElementById('tab-result').style.display = 'none';
+    }
+    function showTabError(msg) {
+        document.getElementById('tab-loading').style.display = 'none';
+        document.getElementById('tab-error').style.display  = 'block';
+        document.getElementById('tab-error-msg').innerText  = msg;
+    }
+
+    // ─── 분석 시작 ───────────────────────────────────────────────
+    async function startMp3Analysis() {
+        if (!tabAudioFile) { alert('파일을 먼저 선택해주세요!'); return; }
+        const bpm  = +document.getElementById('bpm-mp3').value;
+        const sens = +document.getElementById('sens-mp3').value;
+        showTabLoading('오디오를 불러오는 중...');
+        try {
+            const ab  = await tabAudioFile.arrayBuffer();
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            document.getElementById('tab-loading-msg').innerText = '오디오 디코딩 중...';
+            const audioBuf = await ctx.decodeAudioData(ab);
+            const beats    = await analyzeAudioBuffer(audioBuf, bpm, sens);
+            await ctx.close();
+            setTabResult(beats);
+        } catch (e) { showTabError('오디오 분석 오류: ' + e.message); }
+    }
+
+    async function startYoutubeAnalysis() {
+        const url  = document.getElementById('yt-url-input').value.trim();
+        if (!url) { alert('유튜브 URL을 입력해주세요!'); return; }
+        const bpm  = +document.getElementById('bpm-yt').value;
+        const sens = +document.getElementById('sens-yt').value;
+        showTabLoading('유튜브 오디오 다운로드 중... (최대 1~2분 소요)');
+        try {
+            const res = await fetch((window.GUITAR_API_URL || '') + '/api/youtube', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url }),
+            });
+            if (!res.ok) { const e = await res.json(); throw new Error(e.error || '서버 오류'); }
+            document.getElementById('tab-loading-msg').innerText = '오디오 디코딩 중...';
+            const ab       = await res.arrayBuffer();
+            const ctx      = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuf = await ctx.decodeAudioData(ab);
+            const beats    = await analyzeAudioBuffer(audioBuf, bpm, sens);
+            await ctx.close();
+            setTabResult(beats);
+        } catch (e) { showTabError(e.message || '유튜브 변환 실패'); }
+    }
+
+    // ─── 결과 설정 ───────────────────────────────────────────────
+    function setTabResult(beats) {
+        origTabBeats = beats.map(b => ({ slots:[...b.slots], cleanFrets:[...(b.cleanFrets||[])], chord:b.chord }));
+        tabBeats     = beats.map(b => ({ slots:[...b.slots], cleanFrets:[...(b.cleanFrets||[])], chord:b.chord }));
+        document.getElementById('tab-loading').style.display = 'none';
+        document.getElementById('tab-result').style.display  = 'block';
+        tabEditMode = false;
+        document.getElementById('tab-editor').style.display  = 'none';
+        document.getElementById('edit-mode-btn').innerText   = '✏️ 편집 모드';
+        document.getElementById('tab-mode-badge').innerText  = '보기 모드';
+        document.getElementById('tab-mode-badge').style.cssText =
+            'font-size:12px;background:#e8f4fd;color:var(--primary);padding:4px 12px;border-radius:20px;font-weight:600;';
+        renderTabText();
+    }
+
+    // ─── TAB 텍스트 렌더링 (코드명 포함) ─────────────────────────
+    function renderTabText() {
+        // 각 비트의 컬럼 너비를 셀 내용 기준으로 동적 계산
+        const colW = tabBeats.map(b => {
+            const maxSlotLen = Math.max(...b.slots.map(s => s === '-' ? 3 : s.length));
+            return Math.max(3, maxSlotLen) + 1; // +1 for separator
+        });
+
+        const lines = TAB_STRINGS.map(n => n + '|');
+        let chordRow = '  '; // 줄 이름(1자) + '|'(1자) 폭 맞춤
+
+        for (let i = 0; i < tabBeats.length; i++) {
+            const b = tabBeats[i], cw = colW[i];
+            if (showChords) chordRow += (b.chord || '').padEnd(cw, ' ');
+            for (let s = 0; s < 6; s++) {
+                const v = b.slots[s];
+                lines[s] += (v === '-' ? '-'.repeat(cw - 1) : v).padEnd(cw - 1, '-') + '|';
+            }
+        }
+
+        let out = '';
+        if (showChords && tabBeats.some(b => b.chord)) out = chordRow + '\n';
+        out += lines.join('\n');
+        document.getElementById('tab-display').innerText = out;
+    }
+
+    // ─── 편집 모드 ───────────────────────────────────────────────
+    function toggleEditMode() {
+        tabEditMode = !tabEditMode;
+        const btn    = document.getElementById('edit-mode-btn');
+        const badge  = document.getElementById('tab-mode-badge');
+        const editor = document.getElementById('tab-editor');
+        if (tabEditMode) {
+            editor.style.display = 'block'; btn.innerText = '👁️ 보기 모드';
+            badge.innerText = '편집 모드'; badge.style.background = '#fff3cd'; badge.style.color = '#856404';
+            renderTabGrid();
+        } else {
+            editor.style.display = 'none'; btn.innerText = '✏️ 편집 모드';
+            badge.innerText = '보기 모드'; badge.style.background = '#e8f4fd'; badge.style.color = 'var(--primary)';
+        }
+    }
+
+    function toggleChords() {
+        showChords = !showChords;
+        const btn = document.getElementById('chord-toggle-btn');
+        btn.innerText = showChords ? '코드명 ON' : '코드명 OFF';
+        btn.style.background = showChords ? 'var(--primary)' : '#868e96';
+        renderTabText();
+    }
+
+    function renderTabGrid() {
+        const tbl = document.getElementById('tab-grid-table');
+        tbl.innerHTML = '';
+
+        // 코드명 행 (노란색)
+        const chTr  = document.createElement('tr');
+        const chLbl = document.createElement('td');
+        chLbl.className = 'tab-string-label'; chLbl.innerText = '♩';
+        chTr.appendChild(chLbl);
+        for (let b = 0; b < tabBeats.length; b++) {
+            const td  = document.createElement('td');
+            const inp = document.createElement('input');
+            inp.type = 'text'; inp.className = 'tab-cell tab-chord-cell';
+            inp.value = tabBeats[b].chord || ''; inp.placeholder = '-';
+            inp.dataset.type = 'chord'; inp.dataset.b = b;
+            inp.title = '코드명 직접 입력 (예: Am, G, C)';
+            inp.addEventListener('change', e => {
+                tabBeats[+e.target.dataset.b].chord = e.target.value.trim() || null;
+                renderTabText();
+            });
+            td.appendChild(inp); chTr.appendChild(td);
+        }
+        tbl.appendChild(chTr);
+
+        // 줄 행
+        for (let s = 0; s < 6; s++) {
+            const tr  = document.createElement('tr');
+            const lbl = document.createElement('td');
+            lbl.className = 'tab-string-label'; lbl.innerText = TAB_STRINGS[s];
+            tr.appendChild(lbl);
+            for (let b = 0; b < tabBeats.length; b++) {
+                const td  = document.createElement('td');
+                const v   = tabBeats[b].slots[s];
+                const inp = document.createElement('input');
+                inp.type      = 'text';
+                inp.className = 'tab-cell' + (v !== '-' ? ' has-note' : '');
+                inp.value     = v === '-' ? '' : v;
+                inp.maxLength = 8;
+                inp.dataset.s = s; inp.dataset.b = b;
+                inp.addEventListener('change', onTabCellChange);
+                td.appendChild(inp); tr.appendChild(td);
+            }
+            tbl.appendChild(tr);
+        }
+    }
+
+    function onTabCellChange(e) {
+        const s = +e.target.dataset.s, b = +e.target.dataset.b;
+        let v = e.target.value.trim();
+        if (v === '' || v === '-') {
+            v = '-'; e.target.value = ''; e.target.classList.remove('has-note');
+        } else {
+            // 허용: 숫자, 기술 기호(h p b br / \ ~ x PM), 조합
+            if (!/^(x|PM|[0-9]{1,2}([hpb\/\\~]([0-9]{0,2})?(br|~)?)?)$/.test(v)) {
+                alert('유효한 입력 예: 5  5h7  7p5  5/7  7\\5  7b  7br  7~  5x  PM');
+                e.target.value = tabBeats[b].slots[s] === '-' ? '' : tabBeats[b].slots[s];
+                return;
+            }
+            e.target.classList.add('has-note');
+        }
+        tabBeats[b].slots[s] = v;
+        renderTabText();
+    }
+
+    // 주법 기호 삽입 (툴바 버튼)
+    function insertTechnique(sym) {
+        const focused = document.querySelector('.tab-cell:focus');
+        if (!focused || !focused.dataset.s) { alert('먼저 편집할 셀을 클릭하세요.'); return; }
+        const base = focused.value.replace(/[^0-9]/g, '');
+        if (!base) { alert('프렛 번호를 먼저 입력하세요.'); return; }
+        const target = (sym === '/' || sym === '\\') ? base + sym + '?' : base + sym;
+        focused.value = target;
+        focused.dispatchEvent(new Event('change'));
+    }
+
+    // ─── 기타 조작 ───────────────────────────────────────────────
+    function addBeat() {
+        tabBeats.push({ slots:['-','-','-','-','-','-'], cleanFrets:[null,null,null,null,null,null], chord:null });
+        renderTabText();
+        if (tabEditMode) renderTabGrid();
+    }
+
+    function resetTab() {
+        if (!confirm('원래 변환 결과로 초기화할까요?')) return;
+        tabBeats = origTabBeats.map(b => ({ slots:[...b.slots], cleanFrets:[...(b.cleanFrets||[])], chord:b.chord }));
+        renderTabText();
+        if (tabEditMode) renderTabGrid();
+    }
+
+    function downloadTxt() {
+        const txt = document.getElementById('tab-display').innerText;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+        a.download = 'guitar_tab.txt'; a.click();
+    }
+
+    async function copyTab() {
+        try {
+            await navigator.clipboard.writeText(document.getElementById('tab-display').innerText);
+            alert('클립보드에 복사되었습니다!');
+        } catch { alert('복사 실패. 브라우저 권한을 확인해주세요.'); }
+    }
 </script>
 
 </body>

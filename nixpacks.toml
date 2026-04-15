@@ -1,0 +1,9 @@
+# Railway 배포 설정 (nixpacks 사용)
+[phases.setup]
+aptPkgs = ["ffmpeg", "python3", "python3-pip"]
+
+[phases.install]
+cmds = ["npm install --production", "pip3 install yt-dlp"]
+
+[start]
+cmd = "node server.js"

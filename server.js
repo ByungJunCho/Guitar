@@ -1,11 +1,14 @@
 const express = require('express');
 const OpenAI = require('openai');
 const cors = require('cors');
-const path = require('path'); // 파일 경로 처리를 위해 필수
+const path = require('path');
+const { exec, execFile } = require('child_process');
+const fs = require('fs');
+const os = require('os');
 require('dotenv').config();
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 // 미들웨어 설정
 app.use(cors());
@@ -72,6 +75,49 @@ app.post('/api/chat', async (req, res) => {
     console.error("OpenAI API 오류 발생:", error.message);
     res.status(500).json({ error: "AI 코치가 응답하는 중 오류가 발생했습니다." });
   }
+});
+
+// YouTube 오디오 추출 엔드포인트
+app.post('/api/youtube', (req, res) => {
+  const { url } = req.body;
+
+  if (!url || !/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+/.test(url)) {
+    return res.status(400).json({ error: '유효한 유튜브 URL을 입력해주세요.' });
+  }
+
+  const tmpBase = path.join(os.tmpdir(), `gtab_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const outputTemplate = `${tmpBase}.%(ext)s`;
+  const outputFile = `${tmpBase}.mp3`;
+
+  // yt-dlp 로 오디오만 추출 (최대 10분 제한)
+  const args = [
+    '-x',
+    '--audio-format', 'mp3',
+    '--audio-quality', '5',
+    '--no-playlist',
+    '--match-filter', 'duration<=600',
+    '-o', outputTemplate,
+    url,
+  ];
+
+  execFile('yt-dlp', args, { timeout: 180000 }, (error) => {
+    if (error) {
+      console.error('yt-dlp 오류:', error.message);
+      return res.status(500).json({
+        error: 'YouTube 오디오 추출 실패. URL을 확인하거나 서버에 yt-dlp / ffmpeg 가 설치되어 있는지 확인해주세요.',
+      });
+    }
+
+    fs.readFile(outputFile, (readErr, data) => {
+      fs.unlink(outputFile, () => {}); // 임시 파일 정리
+      if (readErr) {
+        return res.status(500).json({ error: '오디오 파일 처리 중 오류가 발생했습니다.' });
+      }
+      res.set('Content-Type', 'audio/mpeg');
+      res.set('Content-Length', data.length);
+      res.send(data);
+    });
+  });
 });
 
 app.listen(port, () => {

@@ -1,4 +1,11 @@
 {
+  "name": "guitar-coach-pro",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "install:yt-dlp": "pip install yt-dlp"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

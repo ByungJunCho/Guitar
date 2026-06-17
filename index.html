@@ -91,7 +91,7 @@
         .bpm-row span { font-size: 14px; font-weight: bold; color: var(--primary); min-width: 68px; }
         .spinner { width: 40px; height: 40px; border: 4px solid #e9ecef; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 15px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #tab-display { font-family: 'Courier New', Courier, monospace; font-size: 14px; line-height: 2.1; background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 12px; overflow-x: auto; white-space: pre; margin: 0; }
+        #tab-display { background: #fafafa; border-radius: 12px; overflow-x: auto; padding: 16px 12px 12px; margin: 0; border: 1px solid #e9ecef; }
         .tab-action-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
         .btn-sm { padding: 8px 14px; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: background 0.2s; color: #fff; }
         .btn-sm-primary { background: var(--primary); } .btn-sm-primary:hover { background: var(--hover); }
@@ -114,10 +114,59 @@
         .tech-btn-label { font-size:12px; color:#888; margin-right:4px; white-space:nowrap; }
 
         /* === 오선지 악보 변환기 === */
+        #screen-sheet .content-wrapper { max-width: 1400px; }
         #osmd-container { min-height: 200px; overflow-x: auto; background: #fff; border-radius: 12px; padding: 12px; }
         #osmd-container svg { max-width: 100%; height: auto; }
         .sheet-action-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
         .sheet-install-hint { background: #fff9e6; border: 1px solid #ffc107; border-radius: 10px; padding: 16px 20px; font-size: 13px; color: #856404; white-space: pre-wrap; line-height: 1.7; margin-top: 10px; }
+
+        /* === 코드 연습 === */
+        .chord-score-badge {
+            margin-left: auto;
+            background: var(--primary);
+            color: #fff;
+            padding: 5px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        #chord-target-name {
+            font-size: 88px;
+            font-weight: 900;
+            color: var(--dark);
+            line-height: 1;
+        }
+        .chord-new-anim { animation: chordNewAnim 0.35s ease forwards; }
+        @keyframes chordNewAnim {
+            from { opacity: 0; transform: scale(0.8); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        .chord-card-correct { animation: chordCorrectFlash 0.7s ease forwards; }
+        @keyframes chordCorrectFlash {
+            0%   { background: var(--card-bg); }
+            40%  { background: #d4edda; }
+            100% { background: var(--card-bg); }
+        }
+        #chord-confirm-wrap { height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+        #chord-confirm-bar  { height: 100%; width: 0%; background: #28a745; border-radius: 4px; transition: width 0.1s linear; }
+        #exam-confirm-wrap  { height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+        #exam-confirm-bar   { height: 100%; width: 0%; background: #28a745; border-radius: 4px; transition: width 0.1s linear; }
+
+        /* === 코드 선택 토글 버튼 === */
+        .chord-select-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chord-toggle-btn {
+            padding: 7px 16px; border-radius: 8px; border: 2px solid #dee2e6;
+            background: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s; color: #888;
+        }
+        .chord-toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .chord-toggle-btn:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+        /* === 코드 시험 === */
+        #exam-result-overlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75); align-items: center; justify-content: center; z-index: 100;
+        }
     </style>
 </head>
 <body>
@@ -147,6 +196,12 @@
                 </button>
                 <button class="circle-btn" onclick="openScreen('screen-sheet')">
                     <span>📜</span>오선지 악보
+                </button>
+                <button class="circle-btn" onclick="openScreen('screen-chord')">
+                    <span>🎸</span>코드 연습
+                </button>
+                <button class="circle-btn" onclick="openScreen('screen-exam')">
+                    <span>📝</span>코드 시험
                 </button>
             </div>
         </div>
@@ -304,7 +359,7 @@
                         <h3 style="margin:0;font-size:17px;">생성된 타브악보</h3>
                         <span id="tab-mode-badge" style="font-size:12px;background:#e8f4fd;color:var(--primary);padding:4px 12px;border-radius:20px;font-weight:600;">보기 모드</span>
                     </div>
-                    <pre id="tab-display"></pre>
+                    <div id="tab-display"></div>
                     <div class="tab-action-bar">
                         <button id="edit-mode-btn" class="btn-sm btn-sm-dark" onclick="toggleEditMode()">✏️ 편집 모드</button>
                         <button id="chord-toggle-btn" class="btn-sm btn-sm-primary" onclick="toggleChords()">코드명 ON</button>
@@ -405,6 +460,132 @@
         </div>
     </div>
 
+
+    <!-- 코드 연습 -->
+    <div id="screen-chord" class="feature-screen">
+        <div class="content-wrapper">
+            <div class="header">
+                <button class="back-btn" onclick="goHome()">←</button>
+                <h2>코드 연습</h2>
+            </div>
+
+            <!-- 코드 선택 -->
+            <div class="card" style="padding:18px 24px;margin-bottom:20px;">
+                <div style="font-size:13px;color:#666;font-weight:700;margin-bottom:12px;">연습할 코드 선택 <span style="font-weight:400;color:#aaa;">(클릭하면 잡는법 확인)</span></div>
+                <div class="chord-select-grid" id="chord-select-grid"></div>
+                <div id="chord-preview-area" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e9ecef;align-items:center;gap:20px;">
+                    <div id="chord-preview-diagram"></div>
+                    <div>
+                        <div id="chord-preview-name" style="font-size:28px;font-weight:900;color:var(--dark);"></div>
+                        <div id="chord-preview-hint" style="font-size:13px;color:#888;margin-top:4px;"></div>
+                        <div style="font-size:12px;color:#aaa;margin-top:6px;">× = 안침 &nbsp; ○ = 개방현 &nbsp; ● = 프렛 위치</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 타겟 코드 카드 -->
+            <div class="card" id="chord-target-card" style="text-align:center;padding:24px 30px;">
+                <div style="font-size:12px;color:#999;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">이 코드를 연주하세요</div>
+                <div id="chord-target-name">-</div>
+                <div id="chord-notes-hint" style="color:#aaa;font-size:15px;margin:10px 0 20px;font-weight:600;">-</div>
+                <div id="chord-diagram-svg" style="display:flex;justify-content:center;align-items:center;min-height:130px;"></div>
+            </div>
+
+            <!-- 감지 카드 -->
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                    <span style="font-size:14px;color:#666;font-weight:600;">감지된 코드</span>
+                    <div id="chord-detected-name" style="font-size:36px;font-weight:900;color:var(--primary);">-</div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px;">
+                        <span>타겟 코드 일치도</span>
+                        <span><span id="chord-match-pct">0</span>%</span>
+                    </div>
+                    <div style="height:10px;background:#e9ecef;border-radius:5px;overflow:hidden;">
+                        <div id="chord-match-bar" style="height:100%;width:0%;background:var(--primary);border-radius:5px;transition:width 0.1s;"></div>
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px;">
+                        <span>유지 시간 (0.5초)</span>
+                        <span id="chord-hold-pct">0%</span>
+                    </div>
+                    <div id="chord-confirm-wrap">
+                        <div id="chord-confirm-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 피드백 배너 -->
+            <div id="chord-feedback-banner" style="display:none;padding:14px 20px;border-radius:12px;text-align:center;font-size:17px;font-weight:700;"></div>
+
+            <button id="chord-start-btn" class="btn btn-dark" onclick="toggleChordPractice()">연습 시작</button>
+            <button id="chord-skip-btn" class="btn btn-primary" onclick="skipChord()" style="margin-top:10px;" disabled>다음 코드 건너뛰기</button>
+            <p style="text-align:center;color:#888;font-size:13px;margin-top:20px;">브라우저 마이크 권한을 허용해야 합니다</p>
+        </div>
+    </div>
+
+    <!-- 코드 시험 -->
+    <div id="screen-exam" class="feature-screen" style="position:relative;">
+        <div class="content-wrapper">
+            <div class="header">
+                <button class="back-btn" onclick="goHome()">←</button>
+                <h2>코드 시험</h2>
+                <div class="chord-score-badge">점수: <span id="exam-score">0</span>/5</div>
+            </div>
+
+            <!-- 타겟 코드 카드 (다이어그램·힌트 없음) -->
+            <div class="card" id="exam-target-card" style="text-align:center;padding:40px 30px;">
+                <div style="font-size:12px;color:#999;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">이 코드를 연주하세요</div>
+                <div id="exam-target-name" style="font-size:88px;font-weight:900;color:var(--dark);line-height:1;">-</div>
+            </div>
+
+            <!-- 감지 카드 -->
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                    <span style="font-size:14px;color:#666;font-weight:600;">감지된 코드</span>
+                    <div id="exam-detected-name" style="font-size:36px;font-weight:900;color:var(--primary);">-</div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px;">
+                        <span>타겟 코드 일치도</span>
+                        <span><span id="exam-match-pct">0</span>%</span>
+                    </div>
+                    <div style="height:10px;background:#e9ecef;border-radius:5px;overflow:hidden;">
+                        <div id="exam-match-bar" style="height:100%;width:0%;background:var(--primary);border-radius:5px;transition:width 0.1s;"></div>
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px;">
+                        <span>유지 시간 (0.5초)</span>
+                        <span id="exam-hold-pct">0%</span>
+                    </div>
+                    <div id="exam-confirm-wrap">
+                        <div id="exam-confirm-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 피드백 배너 -->
+            <div id="exam-feedback-banner" style="display:none;padding:14px 20px;border-radius:12px;text-align:center;font-size:17px;font-weight:700;"></div>
+
+            <button id="exam-start-btn" class="btn btn-dark" onclick="toggleExam()">시험 시작</button>
+            <p style="text-align:center;color:#888;font-size:13px;margin-top:20px;">브라우저 마이크 권한을 허용해야 합니다</p>
+        </div>
+
+        <!-- 시험 완료 오버레이 -->
+        <div id="exam-result-overlay">
+            <div style="background:#fff;border-radius:24px;padding:50px 40px;text-align:center;max-width:320px;width:90%;">
+                <div style="font-size:60px;margin-bottom:16px;">🏆</div>
+                <div style="font-size:28px;font-weight:900;color:var(--dark);margin-bottom:10px;">만점 달성!</div>
+                <div style="font-size:48px;font-weight:900;color:var(--primary);margin-bottom:24px;">5/5</div>
+                <button class="btn btn-primary" onclick="resetExam()" style="margin-top:0;">다시 시험 보기</button>
+                <button class="btn btn-dark" onclick="goHome()" style="margin-top:10px;">홈으로</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -412,10 +593,17 @@
     function openScreen(screenId) {
         document.getElementById('main-menu').style.display = 'none';
         document.querySelectorAll('.feature-screen').forEach(s => s.style.display = 'none');
-        document.getElementById(screenId).style.display = 'block'; // flex -> block으로 변경 후 내부 wrapper가 flex 담당
+        document.getElementById(screenId).style.display = 'block';
+        if (screenId === 'screen-chord') initChordScreen();
+        if (screenId === 'screen-exam')  initExamScreen();
     }
 
     function goHome() {
+        if (isTuning) stopTuner();
+        if (isMetro) stopMetronome();
+        if (!audio.paused) audio.pause();
+        if (typeof chordActive !== 'undefined' && chordActive) stopChordPractice();
+        if (typeof examActive  !== 'undefined' && examActive)  stopExam();
         document.querySelectorAll('.feature-screen').forEach(s => s.style.display = 'none');
         document.getElementById('main-menu').style.display = 'block';
     }
@@ -424,19 +612,32 @@
     let audioCtx = null;
     let pitch;
     let isTuning = false;
+    let micStream = null;
     const model_url = 'https://cdn.jsdelivr.net/gh/ml5js/ml5-data-and-models/models/pitch-detection/crepe/';
     const guitarNotes = [
         { n: 'E2', f: 82.41 }, { n: 'A2', f: 110.00 }, { n: 'D3', f: 146.83 },
         { n: 'G3', f: 196.00 }, { n: 'B3', f: 246.94 }, { n: 'E4', f: 329.63 }
     ];
 
+    function stopTuner() {
+        isTuning = false;
+        if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+        document.getElementById('note-display').innerText = '-';
+        document.getElementById('freq-display').innerText = 'START를 눌러주세요';
+        document.getElementById('tuner-btn').innerText = 'TUNER START';
+        document.getElementById('tuner-btn').className = 'btn btn-dark';
+        document.getElementById('tuner-pointer').style.left = '50%';
+        document.getElementById('tuner-pointer').style.background = '#dc3545';
+    }
+
     function toggleTuner() {
-        if (isTuning) { location.reload(); return; }
+        if (isTuning) { stopTuner(); return; }
         
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
 
         navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+            micStream = stream;
             document.getElementById('freq-display').innerText = "AI가 소리를 듣고 있습니다...";
             pitch = ml5.pitchDetection(model_url, audioCtx, stream, modelLoaded);
         }).catch(err => alert("마이크 권한을 허용해주세요!"));
@@ -496,12 +697,20 @@
         while (nextTime < audioCtx.currentTime + 0.1) { scheduleNote(nextTime); nextTime += 60/bpm; }
         metroTimer = setTimeout(metroLoop, 25);
     }
+    function stopMetronome() {
+        isMetro = false;
+        clearTimeout(metroTimer);
+        const btn = document.getElementById('metro-btn');
+        btn.innerText = 'START';
+        btn.className = 'btn btn-dark';
+    }
+
     function toggleMetronome() {
         if (!audioCtx) audioCtx = new AudioContext();
         isMetro = !isMetro;
         const btn = document.getElementById('metro-btn');
         if (isMetro) { nextTime = audioCtx.currentTime; metroLoop(); btn.innerText = "STOP"; btn.className = "btn btn-danger"; }
-        else { clearTimeout(metroTimer); btn.innerText = "START"; btn.className = "btn btn-dark"; }
+        else { stopMetronome(); }
     }
     document.getElementById('bpm-slider').oninput = (e) => { bpm = e.target.value; document.getElementById('bpm-val').innerText = bpm; };
 
@@ -928,17 +1137,19 @@
         renderTabText();
     }
 
-    // ─── TAB 텍스트 렌더링 (코드명 포함) ─────────────────────────
-    function renderTabText() {
-        // 각 비트의 컬럼 너비를 셀 내용 기준으로 동적 계산
+    // ─── XML 특수문자 이스케이프 ─────────────────────────────────
+    function xmlEscape(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ─── TAB 텍스트 생성 (다운로드/복사용) ──────────────────────
+    function buildTabText() {
         const colW = tabBeats.map(b => {
             const maxSlotLen = Math.max(...b.slots.map(s => s === '-' ? 3 : s.length));
-            return Math.max(3, maxSlotLen) + 1; // +1 for separator
+            return Math.max(3, maxSlotLen) + 1;
         });
-
         const lines = TAB_STRINGS.map(n => n + '|');
-        let chordRow = '  '; // 줄 이름(1자) + '|'(1자) 폭 맞춤
-
+        let chordRow = '  ';
         for (let i = 0; i < tabBeats.length; i++) {
             const b = tabBeats[i], cw = colW[i];
             if (showChords) chordRow += (b.chord || '').padEnd(cw, ' ');
@@ -947,11 +1158,95 @@
                 lines[s] += (v === '-' ? '-'.repeat(cw - 1) : v).padEnd(cw - 1, '-') + '|';
             }
         }
-
         let out = '';
         if (showChords && tabBeats.some(b => b.chord)) out = chordRow + '\n';
         out += lines.join('\n');
-        document.getElementById('tab-display').innerText = out;
+        return out;
+    }
+
+    // ─── TAB SVG 시각적 렌더링 ───────────────────────────────────
+    function renderTabText() {
+        const container = document.getElementById('tab-display');
+        if (!tabBeats.length) { container.innerHTML = ''; return; }
+
+        const BPR = 16;   // beats per row (4 measures × 4 beats)
+        const BW  = 48;   // beat width px
+        const SG  = 24;   // string gap px
+        const LW  = 32;   // left label width
+        const CH  = 24;   // chord name area height above staff
+        const RP  = 22;   // row bottom padding
+        const SH  = SG * 5; // staff height (e→E = 5 intervals)
+        const RH  = CH + SH + RP;
+        const totalRows = Math.ceil(tabBeats.length / BPR);
+        const W = LW + BPR * BW + 12;
+        const H = totalRows * RH + 20;
+
+        const parts = [];
+        parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="display:block;font-family:'Courier New',monospace;">`);
+
+        for (let row = 0; row < totalRows; row++) {
+            const rs = row * BPR;
+            const re = Math.min(rs + BPR, tabBeats.length);
+            const nb = re - rs;
+            const y0 = row * RH + CH + 8;   // top string Y
+            const xR = LW + nb * BW;         // right edge X
+
+            // 6 string lines + left labels
+            for (let st = 0; st < 6; st++) {
+                const y = y0 + st * SG;
+                parts.push(`<text x="${LW-5}" y="${y+5}" text-anchor="end" font-size="13" font-weight="bold" fill="#666">${TAB_STRINGS[st]}</text>`);
+                parts.push(`<line x1="${LW}" y1="${y}" x2="${xR}" y2="${y}" stroke="#c0c0c0" stroke-width="1"/>`);
+            }
+
+            // Left double bar
+            parts.push(`<line x1="${LW}" y1="${y0}" x2="${LW}" y2="${y0+SH}" stroke="#444" stroke-width="2.5"/>`);
+            parts.push(`<line x1="${LW+3.5}" y1="${y0}" x2="${LW+3.5}" y2="${y0+SH}" stroke="#888" stroke-width="1"/>`);
+            // Right double bar
+            parts.push(`<line x1="${xR}" y1="${y0}" x2="${xR}" y2="${y0+SH}" stroke="#444" stroke-width="2.5"/>`);
+            parts.push(`<line x1="${xR-3.5}" y1="${y0}" x2="${xR-3.5}" y2="${y0+SH}" stroke="#888" stroke-width="1"/>`);
+
+            for (let i = 0; i < nb; i++) {
+                const beat = tabBeats[rs + i];
+                const bl   = LW + i * BW;
+                const bc   = bl + BW / 2;
+
+                // Measure bar line every 4 beats
+                if (i > 0 && i % 4 === 0)
+                    parts.push(`<line x1="${bl}" y1="${y0}" x2="${bl}" y2="${y0+SH}" stroke="#555" stroke-width="1.5"/>`);
+
+                // Chord name above staff
+                if (showChords && beat.chord)
+                    parts.push(`<text x="${bl+4}" y="${y0-7}" font-size="11" font-weight="700" fill="#1d6fe0" font-family="Arial,sans-serif">${xmlEscape(beat.chord)}</text>`);
+
+                // Notes per string
+                for (let st = 0; st < 6; st++) {
+                    const slot = beat.slots[st];
+                    if (!slot || slot === '-') continue;
+                    const y  = y0 + st * SG;
+                    const tw = Math.max(16, slot.length * 8 + 6);
+
+                    // White background over string line
+                    parts.push(`<rect x="${bc-tw/2}" y="${y-10}" width="${tw}" height="15" rx="3" fill="white" stroke="#e0e0e0" stroke-width="0.5"/>`);
+
+                    // Parse: digits in dark, technique symbols in accent color
+                    const segs = slot.split(/([0-9]+)/).filter(Boolean);
+                    const segW = segs.map(sg => /\d/.test(sg) ? sg.length * 8 : sg.length * 6);
+                    const totalW = segW.reduce((a, b) => a + b, 0);
+                    let tx = bc - totalW / 2;
+                    for (let k = 0; k < segs.length; k++) {
+                        const sg   = segs[k];
+                        const isN  = /\d/.test(sg);
+                        const fill = isN ? '#111' : '#c0392b';
+                        const fs   = isN ? 13 : 10;
+                        parts.push(`<text x="${tx}" y="${y+4}" font-size="${fs}" font-weight="${isN?'bold':'normal'}" fill="${fill}">${xmlEscape(sg)}</text>`);
+                        tx += segW[k];
+                    }
+                }
+            }
+        }
+
+        parts.push('</svg>');
+        container.innerHTML = parts.join('');
     }
 
     // ─── 편집 모드 ───────────────────────────────────────────────
@@ -1068,7 +1363,7 @@
     }
 
     function downloadTxt() {
-        const txt = document.getElementById('tab-display').innerText;
+        const txt = buildTabText();
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
         a.download = 'guitar_tab.txt'; a.click();
@@ -1076,7 +1371,7 @@
 
     async function copyTab() {
         try {
-            await navigator.clipboard.writeText(document.getElementById('tab-display').innerText);
+            await navigator.clipboard.writeText(buildTabText());
             alert('클립보드에 복사되었습니다!');
         } catch { alert('복사 실패. 브라우저 권한을 확인해주세요.'); }
     }
@@ -1167,6 +1462,7 @@
                 drawComposer: false,
             });
             osmdInstance = osmd;
+            osmd.zoom = 0.7;
             await osmd.load(musicXml);
             osmd.render();
         } catch (e) {
@@ -1194,6 +1490,479 @@
         document.getElementById('sheet-file-input').value = '';
         document.getElementById('sheet-yt-url').value = '';
         sheetAudioFile = null;
+    }
+
+    /* === 7. 코드 연습 === */
+
+    const CHORD_DEFS = [
+        { name: 'E',  notes: [4, 8, 11], hint: 'E · G# · B', frets: [0,2,2,1,0,0]   },
+        { name: 'Em', notes: [4, 7, 11], hint: 'E · G · B',  frets: [0,2,2,0,0,0]   },
+        { name: 'A',  notes: [9, 1, 4],  hint: 'A · C# · E', frets: [-1,0,2,2,2,0]  },
+        { name: 'Am', notes: [9, 0, 4],  hint: 'A · C · E',  frets: [-1,0,2,2,1,0]  },
+        { name: 'C',  notes: [0, 4, 7],  hint: 'C · E · G',  frets: [-1,3,2,0,1,0]  },
+        { name: 'G',  notes: [7, 11, 2], hint: 'G · B · D',  frets: [3,2,0,0,0,3]   },
+        { name: 'D',  notes: [2, 6, 9],  hint: 'D · F# · A', frets: [-1,-1,0,2,3,2] },
+        { name: 'Dm', notes: [2, 5, 9],  hint: 'D · F · A',  frets: [-1,-1,0,2,3,1] },
+    ];
+
+    const CHORD_HOLD_MS    = 500;
+
+    let chordCurrent       = null;
+    let chordActive        = false;
+    let chordMicStream     = null;
+    let chordAudioCtxP     = null;
+    let chordAnalyserNode  = null;
+    let chordAnimFrame     = null;
+    let chordHoldStart     = null;
+    let chordSelectedNames = new Set(CHORD_DEFS.map(c => c.name));
+
+    // ─── 헬퍼 ────────────────────────────────────────────────────
+    function chordPickRandom(excludeName) {
+        const pool = [...chordSelectedNames].filter(n => n !== excludeName);
+        const list = pool.length > 0 ? pool : [...chordSelectedNames];
+        return CHORD_DEFS.find(c => c.name === list[Math.floor(Math.random() * list.length)]);
+    }
+
+    function buildChordDiagramSVG(chord) {
+        const frets = chord.frets;
+        const W = 130, padTop = 30;
+        const SL = 18, fretW = 90, nutH = 5, fretH = 22, numFrets = 4;
+        const SS = fretW / 5;
+        const H = padTop + nutH + fretH * numFrets + 14;
+
+        const p = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="overflow:visible;">`];
+        p.push(`<rect x="${SL}" y="${padTop}" width="${fretW}" height="${nutH}" fill="#333" rx="2"/>`);
+        for (let f = 1; f <= numFrets; f++) {
+            const y = padTop + nutH + f * fretH;
+            p.push(`<line x1="${SL}" y1="${y}" x2="${SL+fretW}" y2="${y}" stroke="#ccc" stroke-width="1"/>`);
+        }
+        for (let s = 0; s < 6; s++) {
+            const x = SL + s * SS;
+            p.push(`<line x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop+nutH+numFrets*fretH}" stroke="#666" stroke-width="1.3"/>`);
+        }
+        for (let s = 0; s < 6; s++) {
+            const x = SL + s * SS;
+            const f = frets[s];
+            if (f === -1) {
+                p.push(`<text x="${x}" y="${padTop-5}" text-anchor="middle" font-size="14" font-weight="bold" fill="#dc3545">×</text>`);
+            } else if (f === 0) {
+                p.push(`<circle cx="${x}" cy="${padTop-10}" r="5.5" fill="none" stroke="#555" stroke-width="1.5"/>`);
+            } else if (f >= 1 && f <= numFrets) {
+                const cy = padTop + nutH + (f - 0.5) * fretH;
+                p.push(`<circle cx="${x}" cy="${cy}" r="9" fill="#007bff"/>`);
+            }
+        }
+        p.push('</svg>');
+        return p.join('');
+    }
+
+    // ─── 코드 선택 UI ────────────────────────────────────────────
+    function showChordPreview(cd) {
+        document.getElementById('chord-preview-diagram').innerHTML = buildChordDiagramSVG(cd);
+        document.getElementById('chord-preview-name').innerText = cd.name;
+        document.getElementById('chord-preview-hint').innerText = cd.hint;
+        document.getElementById('chord-preview-area').style.display = 'flex';
+    }
+
+    function buildChordSelectionUI() {
+        const grid = document.getElementById('chord-select-grid');
+        grid.innerHTML = '';
+        CHORD_DEFS.forEach(cd => {
+            const btn = document.createElement('button');
+            btn.className = 'chord-toggle-btn active';
+            btn.textContent = cd.name;
+            btn.dataset.chord = cd.name;
+            btn.onclick = () => {
+                showChordPreview(cd);
+                if (chordActive) return;
+                if (chordSelectedNames.has(cd.name)) {
+                    if (chordSelectedNames.size <= 1) return;
+                    chordSelectedNames.delete(cd.name);
+                    btn.classList.remove('active');
+                } else {
+                    chordSelectedNames.add(cd.name);
+                    btn.classList.add('active');
+                }
+            };
+            grid.appendChild(btn);
+        });
+    }
+
+    // ─── UI 업데이트 ─────────────────────────────────────────────
+    function initChordScreen() {
+        buildChordSelectionUI();
+        chordCurrent = chordPickRandom(null);
+        updateChordTargetUI();
+    }
+
+    function updateChordTargetUI() {
+        const nameEl = document.getElementById('chord-target-name');
+        nameEl.classList.remove('chord-new-anim');
+        void nameEl.offsetWidth;
+        nameEl.classList.add('chord-new-anim');
+        nameEl.innerText = chordCurrent.name;
+        document.getElementById('chord-notes-hint').innerText = chordCurrent.hint;
+        document.getElementById('chord-diagram-svg').innerHTML = buildChordDiagramSVG(chordCurrent);
+        document.getElementById('chord-detected-name').innerText = '-';
+        document.getElementById('chord-match-bar').style.width = '0%';
+        document.getElementById('chord-match-bar').style.background = 'var(--primary)';
+        document.getElementById('chord-match-pct').innerText = '0';
+        document.getElementById('chord-feedback-banner').style.display = 'none';
+        chordHoldStart = null;
+        document.getElementById('chord-confirm-bar').style.width = '0%';
+        document.getElementById('chord-hold-pct').innerText = '0%';
+    }
+
+    // ─── 연습 시작/중지 ──────────────────────────────────────────
+    async function toggleChordPractice() {
+        if (chordActive) stopChordPractice();
+        else await startChordPractice();
+    }
+
+    async function startChordPractice() {
+        try {
+            chordAudioCtxP = new (window.AudioContext || window.webkitAudioContext)();
+            chordMicStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            const source = chordAudioCtxP.createMediaStreamSource(chordMicStream);
+            chordAnalyserNode = chordAudioCtxP.createAnalyser();
+            chordAnalyserNode.fftSize = 8192;
+            chordAnalyserNode.smoothingTimeConstant = 0.6;
+            source.connect(chordAnalyserNode);
+            chordActive = true;
+            document.getElementById('chord-start-btn').innerText = '연습 중지';
+            document.getElementById('chord-start-btn').className = 'btn btn-danger';
+            document.getElementById('chord-skip-btn').disabled = false;
+            chordDetectLoop();
+        } catch (err) {
+            alert('마이크 권한을 허용해주세요.\n(' + err.message + ')');
+        }
+    }
+
+    function stopChordPractice() {
+        chordActive = false;
+        if (chordAnimFrame)    { cancelAnimationFrame(chordAnimFrame); chordAnimFrame = null; }
+        if (chordMicStream)    { chordMicStream.getTracks().forEach(t => t.stop()); chordMicStream = null; }
+        if (chordAudioCtxP)    { try { chordAudioCtxP.close(); } catch(e){} chordAudioCtxP = null; }
+        chordAnalyserNode = null;
+        chordHoldStart = null;
+        document.getElementById('chord-start-btn').innerText = '연습 시작';
+        document.getElementById('chord-start-btn').className = 'btn btn-dark';
+        document.getElementById('chord-skip-btn').disabled = true;
+        document.getElementById('chord-detected-name').innerText = '-';
+        document.getElementById('chord-match-bar').style.width = '0%';
+        document.getElementById('chord-match-pct').innerText = '0';
+        document.getElementById('chord-confirm-bar').style.width = '0%';
+        document.getElementById('chord-hold-pct').innerText = '0%';
+    }
+
+    // ─── 실시간 코드 감지 루프 ────────────────────────────────────
+    function chordDetectLoop() {
+        if (!chordActive || !chordAnalyserNode) return;
+
+        const bufLen = chordAnalyserNode.frequencyBinCount;
+        const freqDb = new Float32Array(bufLen);
+        chordAnalyserNode.getFloatFrequencyData(freqDb);
+
+        const sr     = chordAudioCtxP.sampleRate;
+        const binHz  = sr / chordAnalyserNode.fftSize;
+        const minBin = Math.max(1, Math.floor(70   / binHz));
+        const maxBin = Math.min(bufLen - 1, Math.ceil(1500 / binHz));
+
+        let maxDb = -Infinity;
+        for (let i = minBin; i <= maxBin; i++) if (freqDb[i] > maxDb) maxDb = freqDb[i];
+
+        if (maxDb < -60) {
+            chordAnimFrame = requestAnimationFrame(chordDetectLoop);
+            return;
+        }
+
+        const dbThr = maxDb - 22;
+        const peaks = [];
+        for (let i = minBin + 1; i < maxBin - 1; i++) {
+            if (freqDb[i] > freqDb[i-1] && freqDb[i] > freqDb[i+1] && freqDb[i] > dbThr) {
+                peaks.push({ freq: i * binHz, db: freqDb[i] });
+            }
+        }
+        peaks.sort((a, b) => b.db - a.db);
+
+        const fundamentals = [];
+        for (const p of peaks) {
+            let isHarm = false;
+            for (const k of fundamentals) {
+                const r = p.freq / k.freq;
+                if (r > 1.8 && Math.abs(r - Math.round(r)) < 0.1) { isHarm = true; break; }
+            }
+            if (!isHarm) { fundamentals.push(p); if (fundamentals.length >= 6) break; }
+        }
+
+        const pitchClasses = [...new Set(
+            fundamentals.map(p => ((Math.round(12 * Math.log2(p.freq / 440) + 69) % 12) + 12) % 12)
+        )];
+
+        let bestScore = 0, bestChordName = null;
+        for (const cd of CHORD_DEFS) {
+            const matched = cd.notes.filter(n => pitchClasses.includes(n)).length;
+            const score   = matched / cd.notes.length;
+            if (score > bestScore) { bestScore = score; bestChordName = cd.name; }
+        }
+
+        const targetMatched = chordCurrent.notes.filter(n => pitchClasses.includes(n)).length;
+        const targetScore   = targetMatched / chordCurrent.notes.length;
+        const matchPct      = Math.round(targetScore * 100);
+
+        document.getElementById('chord-detected-name').innerText = bestScore >= 0.6 ? (bestChordName || '-') : '-';
+        document.getElementById('chord-match-bar').style.width      = matchPct + '%';
+        document.getElementById('chord-match-bar').style.background = targetScore >= 0.75 ? '#28a745' : 'var(--primary)';
+        document.getElementById('chord-match-pct').innerText = matchPct;
+
+        if (targetScore >= 0.75) {
+            if (!chordHoldStart) chordHoldStart = performance.now();
+            const elapsed = performance.now() - chordHoldStart;
+            const pct = Math.min(100, Math.round(elapsed / CHORD_HOLD_MS * 100));
+            document.getElementById('chord-confirm-bar').style.width = pct + '%';
+            document.getElementById('chord-hold-pct').innerText = pct + '%';
+            if (elapsed >= CHORD_HOLD_MS) {
+                chordHoldStart = null;
+                document.getElementById('chord-confirm-bar').style.width = '0%';
+                document.getElementById('chord-hold-pct').innerText = '0%';
+                onChordCorrect();
+                return;
+            }
+        } else {
+            chordHoldStart = null;
+            document.getElementById('chord-confirm-bar').style.width = '0%';
+            document.getElementById('chord-hold-pct').innerText = '0%';
+        }
+
+        chordAnimFrame = requestAnimationFrame(chordDetectLoop);
+    }
+
+    // ─── 정답 처리 ────────────────────────────────────────────────
+    function onChordCorrect() {
+        const el = document.getElementById('chord-feedback-banner');
+        el.style.background = '#d4edda';
+        el.style.color = '#155724';
+        el.style.border = '1px solid #c3e6cb';
+        el.innerText = '✓ 정답!';
+        el.style.display = 'block';
+
+        const card = document.getElementById('chord-target-card');
+        card.classList.add('chord-card-correct');
+        card.addEventListener('animationend', () => card.classList.remove('chord-card-correct'), { once: true });
+
+        setTimeout(() => {
+            if (!chordActive || !chordAudioCtxP) return;
+            chordCurrent = chordPickRandom(chordCurrent.name);
+            updateChordTargetUI();
+            chordAnimFrame = requestAnimationFrame(chordDetectLoop);
+        }, 1000);
+    }
+
+    function skipChord() {
+        if (!chordActive) return;
+        chordCurrent = chordPickRandom(chordCurrent.name);
+        updateChordTargetUI();
+    }
+
+    /* === 8. 코드 시험 === */
+
+    let examScore        = 0;
+    let examCurrent      = null;
+    let examActive       = false;
+    let examMicStream    = null;
+    let examAudioCtx     = null;
+    let examAnalyserNode = null;
+    let examAnimFrame    = null;
+    let examHoldStart    = null;
+
+    function examPickRandom(excludeName) {
+        const pool = excludeName ? CHORD_DEFS.filter(c => c.name !== excludeName) : CHORD_DEFS;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function initExamScreen() {
+        examScore = 0;
+        document.getElementById('exam-score').innerText = examScore;
+        examCurrent = examPickRandom(null);
+        updateExamTargetUI();
+        document.getElementById('exam-result-overlay').style.display = 'none';
+        document.getElementById('exam-start-btn').innerText = '시험 시작';
+        document.getElementById('exam-start-btn').className = 'btn btn-dark';
+    }
+
+    function updateExamTargetUI() {
+        const nameEl = document.getElementById('exam-target-name');
+        nameEl.classList.remove('chord-new-anim');
+        void nameEl.offsetWidth;
+        nameEl.classList.add('chord-new-anim');
+        nameEl.innerText = examCurrent.name;
+        document.getElementById('exam-detected-name').innerText = '-';
+        document.getElementById('exam-match-bar').style.width = '0%';
+        document.getElementById('exam-match-bar').style.background = 'var(--primary)';
+        document.getElementById('exam-match-pct').innerText = '0';
+        document.getElementById('exam-feedback-banner').style.display = 'none';
+        examHoldStart = null;
+        document.getElementById('exam-confirm-bar').style.width = '0%';
+        document.getElementById('exam-hold-pct').innerText = '0%';
+    }
+
+    async function toggleExam() {
+        if (examActive) stopExam();
+        else await startExam();
+    }
+
+    async function startExam() {
+        try {
+            examAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            examMicStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            const source = examAudioCtx.createMediaStreamSource(examMicStream);
+            examAnalyserNode = examAudioCtx.createAnalyser();
+            examAnalyserNode.fftSize = 8192;
+            examAnalyserNode.smoothingTimeConstant = 0.6;
+            source.connect(examAnalyserNode);
+            examActive = true;
+            document.getElementById('exam-start-btn').innerText = '시험 중지';
+            document.getElementById('exam-start-btn').className = 'btn btn-danger';
+            examDetectLoop();
+        } catch (err) {
+            alert('마이크 권한을 허용해주세요.\n(' + err.message + ')');
+        }
+    }
+
+    function stopExam() {
+        examActive = false;
+        if (examAnimFrame)    { cancelAnimationFrame(examAnimFrame); examAnimFrame = null; }
+        if (examMicStream)    { examMicStream.getTracks().forEach(t => t.stop()); examMicStream = null; }
+        if (examAudioCtx)     { try { examAudioCtx.close(); } catch(e){} examAudioCtx = null; }
+        examAnalyserNode = null;
+        examHoldStart = null;
+        document.getElementById('exam-start-btn').innerText = '시험 시작';
+        document.getElementById('exam-start-btn').className = 'btn btn-dark';
+        document.getElementById('exam-detected-name').innerText = '-';
+        document.getElementById('exam-match-bar').style.width = '0%';
+        document.getElementById('exam-match-pct').innerText = '0';
+        document.getElementById('exam-confirm-bar').style.width = '0%';
+        document.getElementById('exam-hold-pct').innerText = '0%';
+    }
+
+    function examDetectLoop() {
+        if (!examActive || !examAnalyserNode) return;
+
+        const bufLen = examAnalyserNode.frequencyBinCount;
+        const freqDb = new Float32Array(bufLen);
+        examAnalyserNode.getFloatFrequencyData(freqDb);
+
+        const sr     = examAudioCtx.sampleRate;
+        const binHz  = sr / examAnalyserNode.fftSize;
+        const minBin = Math.max(1, Math.floor(70   / binHz));
+        const maxBin = Math.min(bufLen - 1, Math.ceil(1500 / binHz));
+
+        let maxDb = -Infinity;
+        for (let i = minBin; i <= maxBin; i++) if (freqDb[i] > maxDb) maxDb = freqDb[i];
+
+        if (maxDb < -60) {
+            examAnimFrame = requestAnimationFrame(examDetectLoop);
+            return;
+        }
+
+        const dbThr = maxDb - 22;
+        const peaks = [];
+        for (let i = minBin + 1; i < maxBin - 1; i++) {
+            if (freqDb[i] > freqDb[i-1] && freqDb[i] > freqDb[i+1] && freqDb[i] > dbThr) {
+                peaks.push({ freq: i * binHz, db: freqDb[i] });
+            }
+        }
+        peaks.sort((a, b) => b.db - a.db);
+
+        const fundamentals = [];
+        for (const p of peaks) {
+            let isHarm = false;
+            for (const k of fundamentals) {
+                const r = p.freq / k.freq;
+                if (r > 1.8 && Math.abs(r - Math.round(r)) < 0.1) { isHarm = true; break; }
+            }
+            if (!isHarm) { fundamentals.push(p); if (fundamentals.length >= 6) break; }
+        }
+
+        const pitchClasses = [...new Set(
+            fundamentals.map(p => ((Math.round(12 * Math.log2(p.freq / 440) + 69) % 12) + 12) % 12)
+        )];
+
+        let bestScore = 0, bestChordName = null;
+        for (const cd of CHORD_DEFS) {
+            const matched = cd.notes.filter(n => pitchClasses.includes(n)).length;
+            const score   = matched / cd.notes.length;
+            if (score > bestScore) { bestScore = score; bestChordName = cd.name; }
+        }
+
+        const targetMatched = examCurrent.notes.filter(n => pitchClasses.includes(n)).length;
+        const targetScore   = targetMatched / examCurrent.notes.length;
+        const matchPct      = Math.round(targetScore * 100);
+
+        document.getElementById('exam-detected-name').innerText = bestScore >= 0.6 ? (bestChordName || '-') : '-';
+        document.getElementById('exam-match-bar').style.width      = matchPct + '%';
+        document.getElementById('exam-match-bar').style.background = targetScore >= 0.75 ? '#28a745' : 'var(--primary)';
+        document.getElementById('exam-match-pct').innerText = matchPct;
+
+        if (targetScore >= 0.75) {
+            if (!examHoldStart) examHoldStart = performance.now();
+            const elapsed = performance.now() - examHoldStart;
+            const pct = Math.min(100, Math.round(elapsed / CHORD_HOLD_MS * 100));
+            document.getElementById('exam-confirm-bar').style.width = pct + '%';
+            document.getElementById('exam-hold-pct').innerText = pct + '%';
+            if (elapsed >= CHORD_HOLD_MS) {
+                examHoldStart = null;
+                document.getElementById('exam-confirm-bar').style.width = '0%';
+                document.getElementById('exam-hold-pct').innerText = '0%';
+                onExamCorrect();
+                return;
+            }
+        } else {
+            examHoldStart = null;
+            document.getElementById('exam-confirm-bar').style.width = '0%';
+            document.getElementById('exam-hold-pct').innerText = '0%';
+        }
+
+        examAnimFrame = requestAnimationFrame(examDetectLoop);
+    }
+
+    function onExamCorrect() {
+        examScore++;
+        document.getElementById('exam-score').innerText = examScore;
+
+        const banner = document.getElementById('exam-feedback-banner');
+        banner.style.background = '#d4edda';
+        banner.style.color = '#155724';
+        banner.style.border = '1px solid #c3e6cb';
+        banner.innerText = '✓ 정답! +1점';
+        banner.style.display = 'block';
+
+        const card = document.getElementById('exam-target-card');
+        card.classList.add('chord-card-correct');
+        card.addEventListener('animationend', () => card.classList.remove('chord-card-correct'), { once: true });
+
+        if (examScore >= 5) {
+            setTimeout(() => {
+                stopExam();
+                document.getElementById('exam-result-overlay').style.display = 'flex';
+            }, 800);
+            return;
+        }
+
+        setTimeout(() => {
+            if (!examActive || !examAudioCtx) return;
+            examCurrent = examPickRandom(examCurrent.name);
+            updateExamTargetUI();
+            examAnimFrame = requestAnimationFrame(examDetectLoop);
+        }, 1000);
+    }
+
+    function resetExam() {
+        document.getElementById('exam-result-overlay').style.display = 'none';
+        examScore = 0;
+        document.getElementById('exam-score').innerText = examScore;
+        examCurrent = examPickRandom(null);
+        updateExamTargetUI();
     }
 </script>
 

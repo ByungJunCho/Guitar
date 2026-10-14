@@ -1,0 +1,24 @@
+{
+  "name": "Guitar Coach Pro",
+  "short_name": "Guitar Coach",
+  "description": "기타 연습 및 코드 학습 웹 애플리케이션",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "theme_color": "#f4f7f6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

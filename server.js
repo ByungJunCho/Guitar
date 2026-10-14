@@ -8,13 +8,15 @@ const os = require('os');
 const multer = require('multer');
 require('dotenv').config();
 
-// 프로젝트 루트의 .venv Python을 우선 사용 (없으면 시스템 python으로 폴백)
+// 프로젝트 루트의 .venv Python을 우선 사용 (없으면 시스템 python3으로 폴백)
 const VENV_PYTHON_WIN  = path.join(__dirname, '.venv', 'Scripts', 'python.exe');
-const VENV_PYTHON_UNIX = path.join(__dirname, '.venv', 'bin', 'python');
+const VENV_PYTHON_UNIX = path.join(__dirname, '.venv', 'bin', 'python3');
+const VENV_PYTHON_UNIX_FALLBACK = path.join(__dirname, '.venv', 'bin', 'python');
 function getPythonPath() {
-  if (fs.existsSync(VENV_PYTHON_WIN))  return VENV_PYTHON_WIN;
-  if (fs.existsSync(VENV_PYTHON_UNIX)) return VENV_PYTHON_UNIX;
-  return 'python';
+  if (fs.existsSync(VENV_PYTHON_WIN))           return VENV_PYTHON_WIN;
+  if (fs.existsSync(VENV_PYTHON_UNIX))          return VENV_PYTHON_UNIX;
+  if (fs.existsSync(VENV_PYTHON_UNIX_FALLBACK)) return VENV_PYTHON_UNIX_FALLBACK;
+  return 'python3';
 }
 
 const app = express();
